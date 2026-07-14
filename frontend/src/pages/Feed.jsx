@@ -7,8 +7,11 @@ const Feed = () => {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [category, setCategory] = useState('roadblock');
+    const [severity, setSeverity] = useState('moderate')
     const [commentText, setCommentText] = useState({});
     const [error, setError] = useState('');
+    const [deletingReportId, setDeletingReportId] = useState(null);
+    const [deleteReason, setDeleteReason] = useState('other');
 
     // Fetch all reports for the primary newsfeed
     const fetchReports = async () => {
@@ -29,9 +32,10 @@ const Feed = () => {
         e.preventDefault();
         setError('');
         try {
-            await API.post('/reports', { title, description, category });
+            await API.post('/reports', { title, description, category, severity });
             setTitle('');
             setDescription('');
+            setSeverity('moderate');
             fetchReports(); // Refresh the timeline feed
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to submit report');
@@ -83,6 +87,28 @@ const Feed = () => {
         }
     };
 
+    const handleDeleteReport = async (id, reason) => {
+        try {
+            await API.delete(`/reports/${id}`, { data: { reason } });
+            setDeletingReportId(null);
+            fetchReports();
+        } catch (err) {
+            console.error('Delete failed:', err);
+            setError(err.response?.data?.message || 'Failed to delete report');
+        }
+    };
+
+        const handlePrivilegedDelete = async (id) => {
+        const reason = window.prompt('Reason? (irrelevant / resolved / privacy / other)', 'other');
+        if (!reason) return;
+        try {
+            await API.delete(`/reports/${id}`, { data: { reason } });
+            fetchReports();
+        } catch (err) {
+            console.error('Delete failed:', err);
+        }
+    };
+
     return (
         <div className="mx-auto max-w-4xl px-4 py-8 grid grid-cols-1 md:grid-cols-3 gap-6">
 
@@ -107,6 +133,16 @@ const Feed = () => {
                                 <option value="other">Other Alert</option>
                             </select>
                         </div>
+
+                        <div>
+                            <label className="text-xs font-semibold text-gray-600 block">Severity</label>
+                            <select value={severity} onChange={(e) => setSeverity(e.target.value)} className="w-full text-sm mt-1 p-2 border rounded bg-white">
+                                <option value="moderate">Moderate</option>
+                                <option value="high">High</option>
+                                <option value="severe">Severe</option>
+                            </select>
+                        </div>
+
                         <div>
                             <label className="text-xs font-semibold text-gray-600 block">Description</label>
                             <textarea required rows="3" placeholder="Provide details..." value={description}
@@ -170,6 +206,44 @@ const Feed = () => {
                                     <span>▼ Downvote</span>
                                     <span className="bg-gray-100 px-1.5 py-0.5 rounded text-gray-800">{report.downvotes?.length || 0}</span>
                                 </button>
+
+                                {(user?._id === report.postedBy?._id || ['moderator', 'authority'].includes(user?.role)) && (
+                                    <div className="ml-auto flex items-center space-x-2">
+                                        {deletingReportId === report._id ? (
+                                            <>
+                                                <select value={deleteReason} 
+                                                        onChange={(e) => setDeleteReason(e.target.value)} 
+                                                        className="text-xs border rounded p-1"
+                                                >
+                                                    <option value="irrelevant">Irrelevant</option>
+                                                    <option value="resolved">Resolved</option>
+                                                    <option value="privacy">Privacy Concern</option>
+                                                    <option value="other">Other</option>
+                                                </select>
+                                                <button onClick={() => handleDeleteReport(report._id, deleteReason)} 
+                                                        className="text-xs font-semibold text-white bg-red-600 hover:bg-red-700 px-2 py-1 rounded"
+                                                > 
+                                                        Confirm
+                                                </button>
+                                                <button onClick={() => setDeletingReportId(null)} 
+                                                        className="text-xs font-semibold text-gray-500 hover:text-gray-700"
+                                                >
+                                                        Cancel
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <button onClick={() => {
+                                                setDeletingReportId(report._id);
+                                                setDeleteReason('other');
+                                                }}
+                                                className="flex items-center space-x-1 text-xs font-semibold text-red-600 hover:text-red-800"
+                                            >  
+                                                🗑️ Delete 
+                                            </button>
+                                        )}
+                                    </div>
+                                )}                              
+
                             </div>
 
                             {/* ROLE CONTEXTUAL CONTROLS PANEL */}
