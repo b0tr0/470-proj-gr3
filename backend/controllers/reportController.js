@@ -1,9 +1,9 @@
 const Report = require('../models/Report');
 
 const createReport = async (req, res) => {
-  const { title, description, imageUrl, category } = req.body;
+  const { title, description, imageUrl, category, severity } = req.body;
   try {
-    const report = await Report.create({ postedBy: req.user._id, title, description, imageUrl, category });
+    const report = await Report.create({ postedBy: req.user._id, title, description, imageUrl, category, severity });
     res.status(201).json(report);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -12,7 +12,14 @@ const createReport = async (req, res) => {
 
 const getReports = async (req, res) => {
   try {
-    const reports = await Report.find().populate('postedBy', 'username role').sort({ createdAt: -1 });
+    const { severity } = req.query;
+    const filter = { isDeleted: false };
+    if (severity) filter.severity = severity;
+
+    const reports = await Report.find(filter)
+      .populate('postedBy', 'username role')
+      .sort({ createdAt: -1 });
+
     res.json(reports);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -81,4 +88,29 @@ const verifyReport = async (req, res) => {
   }
 };
 
-module.exports = { createReport, getReports, voteReport, commentReport, flagReport, verifyReport };
+const deleteReport = async (req, res) => {
+  const { reason } = req.body; // optional: 'irrelevant' | 'resolved' | 'privacy' | 'other'
+  try {
+    const report = await Report.findById(req.params.id);
+    if (!report) return res.status(404).json({ message: 'Report not found' });
+
+    const isOwner = report.postedBy.toString() === req.user._id.toString();
+    const isPrivileged = ['moderator', 'authority'].includes(req.user.role);
+
+    if (!isOwner && !isPrivileged) {
+      return res.status(403).json({ message: 'Not authorized to delete this report' });
+    }
+
+    report.isDeleted = true;
+    report.deletedBy = req.user._id;
+    report.deletedAt = new Date();
+    report.deleteReason = reason || 'other';
+
+    await report.save();
+    res.json({ message: 'Report deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { createReport, getReports, voteReport, commentReport, flagReport, verifyReport, deleteReport };
