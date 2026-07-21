@@ -20,7 +20,8 @@ const Navbar = () => {
         <div className="flex items-center space-x-6">
           <Link to="/feed" className="hover:text-blue-300 transition">Newsfeed</Link>
           <Link to="/fuel" className="hover:text-blue-300 transition">⛽ Fuel Map</Link>
-          
+          <Link to="/hazards" className="hover:text-blue-300 transition">🚧 Hazard Map</Link>
+
           <div className="flex items-center space-x-3 bg-slate-700 px-3 py-1.5 rounded-lg border border-slate-600">
             <span className="text-sm font-medium">{user.username}</span>
             <span className={`text-xs px-2 py-0.5 rounded font-bold uppercase ${

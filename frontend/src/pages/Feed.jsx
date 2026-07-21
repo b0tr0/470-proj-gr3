@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import API from '../api';
+import ExpirationBadge from '../components/ExpirationBadge';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
 
 const Feed = () => {
     const user = JSON.parse(localStorage.getItem('userInfo'));
@@ -7,8 +10,14 @@ const Feed = () => {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [category, setCategory] = useState('roadblock');
+    const [severity, setSeverity] = useState('moderate')
     const [commentText, setCommentText] = useState({});
     const [error, setError] = useState('');
+    const [deletingReportId, setDeletingReportId] = useState(null);
+    const [deleteReason, setDeleteReason] = useState('other');
+    const [location, setLocation] = useState(null);
+    const [locating, setLocating] = useState(false);
+    const [locationError, setLocationError] = useState('');
 
     // Fetch all reports for the primary newsfeed
     const fetchReports = async () => {
@@ -24,21 +33,27 @@ const Feed = () => {
         fetchReports();
     }, []);
 
-    // Handle posting a new traffic alert (Feature 1)
-    const handleCreateReport = async (e) => {
+    // handle posting a new traffic alert (Feature 1)
+    const handleCreateReport = async (e, isAnonymous = false) => {
         e.preventDefault();
         setError('');
+        if (!title.trim() || !description.trim()) {
+            setError('Title and description are required.')
+            return;
+        }
         try {
-            await API.post('/reports', { title, description, category });
+            await API.post('/reports', { title, description, category, severity, isAnonymous, location });
             setTitle('');
             setDescription('');
-            fetchReports(); // Refresh the timeline feed
+            setSeverity('moderate');
+            setLocation(null);
+            fetchReports(); // refresh the timeline feed
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to submit report');
         }
     };
 
-    // Handle voting updates
+    // handle voting updates
     const handleVote = async (id, voteType) => {
         try {
             await API.put(`/reports/${id}/vote`, { voteType });
@@ -48,7 +63,7 @@ const Feed = () => {
         }
     };
 
-    // Handle comment submissions
+    // handle comment submissions
     const handleAddComment = async (e, reportId) => {
         e.preventDefault();
         const text = commentText[reportId];
@@ -63,7 +78,7 @@ const Feed = () => {
         }
     };
 
-    // Moderator Flag action (Feature 2)
+    // moderator Flag action (Feature 2)
     const handleModeratorAction = async (id, flag) => {
         try {
             await API.put(`/reports/${id}/flag`, { flag });
@@ -73,7 +88,7 @@ const Feed = () => {
         }
     };
 
-    // Authority verification action (Feature 5)
+    // authority verification action (Feature 5)
     const handleAuthorityAction = async (id, status) => {
         try {
             await API.put(`/reports/${id}/verify`, { status });
@@ -81,6 +96,55 @@ const Feed = () => {
         } catch (err) {
             console.error('Authority action failed:', err);
         }
+    };
+
+    const handleDeleteReport = async (id, reason) => {
+        try {
+            await API.delete(`/reports/${id}`, { data: { reason } });
+            setDeletingReportId(null);
+            fetchReports();
+        } catch (err) {
+            console.error('Delete failed:', err);
+            setError(err.response?.data?.message || 'Failed to delete report');
+        }
+    };
+
+    const handlePrivilegedDelete = async (id) => {
+        const reason = window.prompt('Reason? (irrelevant / resolved / privacy / other)', 'other');
+        if (!reason) return;
+        try {
+            await API.delete(`/reports/${id}`, { data: { reason } });
+            fetchReports();
+        } catch (err) {
+            console.error('Delete failed:', err);
+        }
+    };
+
+    const handleToggleLocation = () => {
+        if (location) {
+            setLocation(null);
+            return;
+        }
+
+        if (!navigator.geolocation) {
+            setLocationError('Geolocation is not supported by your browser.');
+            return;
+        }
+
+        setLocating(true);
+        setLocationError('');
+
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+                setLocating(false);
+            },
+            (err) => {
+                setLocationError('Unable to retrieve location. Check browser permissions.');
+                setLocating(false);
+            },
+            { enableHighaccuracy: true, timeout: 10000 }
+        );
     };
 
     return (
@@ -107,6 +171,16 @@ const Feed = () => {
                                 <option value="other">Other Alert</option>
                             </select>
                         </div>
+
+                        <div>
+                            <label className="text-xs font-semibold text-gray-600 block">Severity</label>
+                            <select value={severity} onChange={(e) => setSeverity(e.target.value)} className="w-full text-sm mt-1 p-2 border rounded bg-white">
+                                <option value="moderate">Moderate</option>
+                                <option value="high">High</option>
+                                <option value="severe">Severe</option>
+                            </select>
+                        </div>
+
                         <div>
                             <label className="text-xs font-semibold text-gray-600 block">Description</label>
                             <textarea required rows="3" placeholder="Provide details..." value={description}
@@ -115,8 +189,29 @@ const Feed = () => {
                         <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm p-2 rounded transition">
                             Publish Alert
                         </button>
+                        <button
+                            type="button"
+                            onClick={(e) => handleCreateReport(e, true)}
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm p-2 rounded transition"
+                        >
+                            Publish Anonymously
+                        </button>
                     </form>
                 </div>
+                <button 
+                    type="button"
+                    onClick={handleToggleLocation}
+                    className={`w-full font-medium text-sm p-2 rounded transition ${
+                        location
+                            ? 'bg-green-600 hover:bg-green-700 text-white'
+                            : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                    }`}
+                >
+                    {locating
+                        ? 'Locating...': location
+                        ? `Location Attached (tap to remove)`: 'Share My Location'}
+                </button>
+                {locationError && <p className="text-xs text-red-600">{locationError}</p>}
             </div>
 
             {/* RIGHT COLUMN: NEWSFEED TIMELINE */}
@@ -131,18 +226,35 @@ const Feed = () => {
 
                             {/* Header Info */}
                             <div className="flex justify-between items-start">
-                                <div>
-                                    <span className="text-xs font-bold uppercase tracking-wider bg-slate-100 text-slate-700 px-2 py-0.5 rounded mr-2">
+                                <div className="flex flex-col items-start gap-1">
+                                    <span className="text-xs font-bold uppercase tracking-wider bg-slate-100 text-slate-700 px-2 py-0.5 rounded">
                                         {report.category}
                                     </span>
-                                    <h3 className="text-lg font-bold text-gray-900 mt-1">{report.title}</h3>
+
+                                <span className={`text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
+                                    report.severity === ' severe'
+                                        ? 'bg-red-100 text-red-700'
+                                        : report.severity === ' high'
+                                        ? 'bg-orange-100 text-orange-700'
+                                        : 'bg-yellow-100 text-yellow-700'
+                                }`}>
+                                        {report.severity}
+                                    </span>
+                                
+
+                                <h3 className="text-lg font-bold text-gray-900 mt-1">{report.title}</h3>
                                     <p className="text-xs text-gray-500 mt-0.5">
-                                        Posted by <span className="font-semibold">{report.postedBy?.username || 'Unknown'}</span> ({report.postedBy?.role}) • {new Date(report.createdAt).toLocaleTimeString()}
+                                        Posted by <span className="font-semibold">
+                                            {report.isAnonymous ? 'Anonymous' : report.postedBy?.username || 'Unknown'}
+                                        </span>
+                                        {!report.isAnonymous && ` (${report.postedBy?.role})`}
+                                        {' • '} {new Date(report.createdAt).toLocaleTimeString()}
                                     </p>
                                 </div>
 
                                 {/* Badges for Moderator and Authority Statuses */}
                                 <div className="flex flex-col items-end space-y-1">
+                                    <ExpirationBadge expiresAt={report.expiresAt} />
                                     {report.authorityStatus !== 'unverified' && (
                                         <span className={`text-xs px-2 py-0.5 rounded font-bold uppercase tracking-wide border ${['verified', 'confirmed'].includes(report.authorityStatus) ? 'bg-green-50 border-green-300 text-green-700' : 'bg-red-50 border-red-300 text-red-700'
                                             }`}>
@@ -160,6 +272,29 @@ const Feed = () => {
                             {/* Description Body */}
                             <p className="text-sm text-gray-700 leading-relaxed">{report.description}</p>
 
+                            {/* Shared Location Preview */}
+                            {report.location?.lat && report.location?.lng && (
+                                <div className="rounded-lg overflow-hidden border mx-auto" 
+                                    style={{ height: '460px', width: '50%' }}
+                                >      
+                                    <MapContainer
+                                        key={report._id}
+                                        center={[report.location.lat, report.location.lng]}
+                                        zoom={15}
+                                        scrollWheelZoom={true}
+                                        dragging={true}
+                                    >
+                                        <TileLayer
+                                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                            attribution='&copy; OpenStreetMap contributors'
+                                        />
+                                        <Marker position={[report.location.lat, report.location.lng]}>
+                                            <Popup>{report.title}</Popup>
+                                        </Marker>
+                                    </MapContainer>
+                                </div>
+                            )}
+
                             {/* Interactions Section (Voting) */}
                             <div className="flex items-center space-x-4 border-t border-b border-gray-100 py-2">
                                 <button onClick={() => handleVote(report._id, 'upvote')} className="flex items-center space-x-1 text-xs font-semibold text-gray-600 hover:text-green-600">
@@ -170,6 +305,44 @@ const Feed = () => {
                                     <span>▼ Downvote</span>
                                     <span className="bg-gray-100 px-1.5 py-0.5 rounded text-gray-800">{report.downvotes?.length || 0}</span>
                                 </button>
+
+                                {(user?._id === report.postedBy?._id || ['moderator', 'authority'].includes(user?.role)) && (
+                                    <div className="ml-auto flex items-center space-x-2">
+                                        {deletingReportId === report._id ? (
+                                            <>
+                                                <select value={deleteReason} 
+                                                        onChange={(e) => setDeleteReason(e.target.value)} 
+                                                        className="text-xs border rounded p-1"
+                                                >
+                                                    <option value="irrelevant">Irrelevant</option>
+                                                    <option value="resolved">Resolved</option>
+                                                    <option value="privacy">Privacy Concern</option>
+                                                    <option value="other">Other</option>
+                                                </select>
+                                                <button onClick={() => handleDeleteReport(report._id, deleteReason)} 
+                                                        className="text-xs font-semibold text-white bg-red-600 hover:bg-red-700 px-2 py-1 rounded"
+                                                > 
+                                                        Confirm
+                                                </button>
+                                                <button onClick={() => setDeletingReportId(null)} 
+                                                        className="text-xs font-semibold text-gray-500 hover:text-gray-700"
+                                                >
+                                                        Cancel
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <button onClick={() => {
+                                                setDeletingReportId(report._id);
+                                                setDeleteReason('other');
+                                                }}
+                                                className="flex items-center space-x-1 text-xs font-semibold text-red-600 hover:text-red-800"
+                                            >  
+                                                🗑️ Delete 
+                                            </button>
+                                        )}
+                                    </div>
+                                )}                              
+
                             </div>
 
                             {/* ROLE CONTEXTUAL CONTROLS PANEL */}

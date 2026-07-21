@@ -1,9 +1,20 @@
 const Report = require('../models/Report');
+const { calculateExpiresAt } = require('../models/Expiration');
 
 const createReport = async (req, res) => {
-  const { title, description, imageUrl, category } = req.body;
+  const { title, description, imageUrl, category, severity, isAnonymous, location } = req.body;
   try {
-    const report = await Report.create({ postedBy: req.user._id, title, description, imageUrl, category });
+    const report = await Report.create({ 
+      postedBy: req.user._id, 
+      title, 
+      description, 
+      imageUrl, 
+      category, 
+      severity, 
+      isAnonymous: !!isAnonymous,
+      expiresAt: calculateExpiresAt(category, severity),
+      location: location?.lat && location?.lng ? location : undefined
+    });
     res.status(201).json(report);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -12,8 +23,25 @@ const createReport = async (req, res) => {
 
 const getReports = async (req, res) => {
   try {
-    const reports = await Report.find().populate('postedBy', 'username role').sort({ createdAt: -1 });
-    res.json(reports);
+    const { severity } = req.query;
+    const filter = { isDeleted: false, expiresAt: { $gt: new Date() } };
+    if (severity) filter.severity = severity;
+
+    const reports = await Report.find(filter)
+      .populate('postedBy', 'username role')
+      .sort({ createdAt: -1 });
+
+    const viewerRole = req.user?.role;
+
+    const hidden = reports.map((report) => {
+      const obj = report.toObject();
+      if (obj.isAnonymous && viewerRole !== 'authority') {
+        obj.postedBy = { username: 'Anonymous', role: null}
+      }
+      return obj;
+    });
+
+    res.json(hidden);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -81,4 +109,29 @@ const verifyReport = async (req, res) => {
   }
 };
 
-module.exports = { createReport, getReports, voteReport, commentReport, flagReport, verifyReport };
+const deleteReport = async (req, res) => {
+  const { reason } = req.body; // optional: 'irrelevant' | 'resolved' | 'privacy' | 'other'
+  try {
+    const report = await Report.findById(req.params.id);
+    if (!report) return res.status(404).json({ message: 'Report not found' });
+
+    const isOwner = report.postedBy.toString() === req.user._id.toString();
+    const isPrivileged = ['moderator', 'authority'].includes(req.user.role);
+
+    if (!isOwner && !isPrivileged) {
+      return res.status(403).json({ message: 'Not authorized to delete this report' });
+    }
+
+    report.isDeleted = true;
+    report.deletedBy = req.user._id;
+    report.deletedAt = new Date();
+    report.deleteReason = reason || 'other';
+
+    await report.save();
+    res.json({ message: 'Report deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+module.exports = { createReport, getReports, voteReport, commentReport, flagReport, verifyReport, deleteReport };

@@ -4,6 +4,7 @@ import Navbar from './components/Navbar';
 import Auth from './pages/Auth';
 import Feed from './pages/Feed';
 import Fuel from './pages/Fuel';
+import HazardMap from './pages/HazardMap';
 
 
 // Route guarding to check if user info exists
@@ -21,6 +22,7 @@ function App() {
           <Route path="/" element={<Auth />} />
           <Route path="/feed" element={<ProtectedRoute><Feed /></ProtectedRoute>} />
           <Route path="/fuel" element={<ProtectedRoute><Fuel /></ProtectedRoute>} />
+          <Route path="/hazards" element={<ProtectedRoute><HazardMap /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>

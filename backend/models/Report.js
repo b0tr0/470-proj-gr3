@@ -10,6 +10,12 @@ const reportSchema = new mongoose.Schema({
     enum: ['roadblock', 'accident', 'discussion', 'other'], 
     required: true 
   },
+  severity: {
+    type: String,
+    enum: ['moderate', 'high', 'severe'],
+    default: 'moderate',
+    required: true
+  },
   upvotes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   downvotes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   comments: [{
@@ -27,6 +33,24 @@ const reportSchema = new mongoose.Schema({
     type: String, 
     enum: ['unverified', 'verified', 'confirmed', 'outdated', 'disputed'], 
     default: 'unverified' 
+  },
+  isDeleted: { type: Boolean, default: false },
+  deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  deletedAt: { type: Date, default: null },
+  deleteReason: { 
+    type: String, 
+    enum: ['irrelevant', 'resolved', 'privacy', 'other'], default: null},
+  isAnonymous: { 
+    type: Boolean,
+    default: false
+  },
+  expiresAt: { 
+    type: Date,
+    required: true
+  },
+  location: {
+    lat: { type: Number },
+    lng: { type: Number }
   }
 }, { timestamps: true });
 
