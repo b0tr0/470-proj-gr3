@@ -1,0 +1,51 @@
+/* Layout Container */
+#root {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* Navbar Styling */
+nav, .navbar {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 12px 0;
+  border-bottom: 1px solid #1b4d3e;
+  margin-bottom: 20px;
+}
+
+nav a, .navbar a {
+  color: #81c784 !important;
+  font-weight: 600;
+}
+
+/* Form Container & Inputs */
+form, .auth-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 15px;
+}
+
+label {
+  font-size: 14px;
+  margin-top: 5px;
+  color: inherit;
+}
+
+/* Button Refinement */
+button {
+  background-color: #2e7d32;
+  color: #ffffff;
+  padding: 10px 18px;
+  border-radius: 6px;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+button:hover {
+  background-color: #388e3c;
+}

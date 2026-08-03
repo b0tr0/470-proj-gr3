@@ -1,0 +1,12 @@
+mahi.ahmed.mia@g.bracu.ac.bd	
+
+HelpisO0NtheWay
+
+
+mahiahmedmia_db_user
+
+EfQ2IdHyGuvoq0NZ
+
+mongodb+srv://mahiahmedmia_db_user:<db_password>@cluster0.0nimgir.mongodb.net/?appName=Cluster0
+
+

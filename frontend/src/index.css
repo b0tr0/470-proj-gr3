@@ -1,0 +1,139 @@
+/* ==========================================
+   TRAFFIC ALERT - MASTER THEME & VISIBILITY FIX
+   ========================================== */
+
+:root {
+  --bg-main: #0b2b1a;          
+  --bg-nav: #082013;           
+  --bg-card: #ffffff;          
+  --text-dark: #0f172a;        
+  --text-light: #ffffff;       
+  --accent-red: #ef4444;       
+  --accent-red-hover: #dc2626;
+  --border-color: #cbd5e1;     
+  
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-main) !important;
+  color: var(--text-light);
+  min-height: 100vh;
+}
+
+/* NAVBAR */
+nav, .navbar {
+  background-color: var(--bg-nav) !important;
+}
+
+.logo, nav h1 {
+  color: #ffffff !important;
+}
+
+.logo span, nav h1 span {
+  color: var(--accent-red) !important;
+}
+
+/* WHITE CONTAINERS & CARDS (FORCING DARK TEXT) */
+.card, 
+.auth-container, 
+.forum-card, 
+.post-card, 
+.trend-card, 
+.network-card, 
+.authority-card, 
+.report-modal,
+.bg-white,
+[style*="background-color: white"],
+[style*="backgroundColor: white"],
+[style*="background-color: #fff"],
+[style*="backgroundColor: #fff"],
+[style*="background-color: rgb(255, 255, 255)"],
+[style*="backgroundColor: rgb(255, 255, 255)"],
+[style*="background-color: #fffbeb"],
+[style*="backgroundColor: #fffbeb"] {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-radius: 12px;
+}
+
+.card *, 
+.auth-container *, 
+.forum-card *, 
+.post-card *, 
+.trend-card *, 
+.network-card *, 
+.authority-card *, 
+.report-modal *,
+.bg-white *,
+[style*="background-color: white"] *,
+[style*="backgroundColor: white"] *,
+[style*="background-color: #fff"] *,
+[style*="backgroundColor: #fff"] *,
+[style*="background-color: #fffbeb"] * {
+  color: #0f172a !important;
+}
+
+/* FORM INPUTS & TEXT AREAS */
+input, select, textarea {
+  width: 100% !important;
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1.5px solid #cbd5e1 !important;
+  border-radius: 8px !important;
+  padding: 0.75rem 1rem !important;
+  font-size: 0.95rem !important;
+  margin-bottom: 1rem !important;
+  outline: none !important;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #64748b !important;
+}
+
+/* BUTTONS & BADGES OVERRIDES */
+button, .btn, button *, .btn * {
+  color: #ffffff !important;
+}
+
+button[type="submit"], .btn-primary, .bg-red-500 {
+  background-color: var(--accent-red) !important;
+}
+
+.badge-green, .status-verified, [class*="verified"], .badge-green *, .status-verified * {
+  background-color: #dcfce7 !important;
+  color: #15803d !important;
+}
+
+.badge-yellow, .status-pending, [class*="pending"], .badge-yellow *, .status-pending * {
+  background-color: #fef9c3 !important;
+  color: #a16207 !important;
+}
+
+div[style*="072415"], div[style*="072415"] * {
+  color: #ffffff !important;
+}
+
+/* EMERGENCY ALERT BOX TEXT FIX */
+div[class*="bg-amber"], 
+div[class*="bg-yellow"], 
+div[style*="fffbeb"], 
+div[style*="FEF3C7"],
+div[style*="fef3c7"] {
+  color: #0f172a !important;
+}
+
+div[class*="bg-amber"] *, 
+div[class*="bg-yellow"] *, 
+div[style*="fffbeb"] *, 
+div[style*="FEF3C7"] *,
+div[style*="fef3c7"] * {
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+}
