@@ -1,75 +1,55 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 const Network = () => {
+  const [friendName, setFriendName] = useState("");
+  const [friends, setFriends] = useState([
+    { id: 1, name: "Sarah Jenkins", status: "Commuting" },
+    { id: 2, name: "Dave Miller", status: "Idle" },
+    { id: 3, name: "Alex Rivera", status: "Driving" }
+  ]);
+
+  const handleAddFriend = (e) => {
+    e.preventDefault();
+    if (!friendName.trim()) return;
+
+    const newFriend = {
+      id: Date.now(),
+      name: friendName,
+      status: "Active"
+    };
+
+    setFriends([...friends, newFriend]);
+    setFriendName(""); 
+  };
+
   return (
-    <div style={{ padding: '40px', maxWidth: '1400px', margin: '0 auto' }}>
-      <h2 style={{ marginBottom: '24px', color: '#0f172a' }}>
-        User Network
-      </h2>
-
-      {/* Main Grid Section */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px' }}>
+    <div className="p-6 bg-emerald-950 min-h-screen text-black flex justify-center gap-6">
+      <div className="bg-white p-5 rounded-2xl w-80 shadow-lg">
+        <h3 className="font-bold text-lg mb-4 text-gray-800">👤 User Friend List</h3>
         
-        {/* Left Side: Friend List Card */}
-        <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '28px', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }}>
-          <h3 style={{ margin: '0 0 20px 0', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            👥 User Friend List
-          </h3>
+        <form onSubmit={handleAddFriend} className="flex gap-2 mb-4">
+          <input
+            type="text"
+            placeholder="Enter name"
+            value={friendName}
+            onChange={(e) => setFriendName(e.target.value)}
+            className="border border-gray-300 p-2 rounded-lg text-sm w-full outline-none focus:border-red-500"
+          />
+          <button type="submit" className="bg-red-500 hover:bg-red-600 text-white font-medium px-4 py-2 rounded-lg text-sm whitespace-nowrap transition">
+            Add Friend
+          </button>
+        </form>
 
-          <div style={{ display: 'flex', gap: '10px', marginBottom: '24px' }}>
-            <input 
-              type="text" 
-              placeholder="Enter user name..." 
-              style={{
-                flex: 1,
-                padding: '12px 16px',
-                borderRadius: '8px',
-                border: '1px solid #cbd5e1',
-                fontSize: '0.95rem',
-                color: '#0f172a',
-                backgroundColor: '#f8fafc'
-              }}
-            />
-            <button style={{ backgroundColor: '#ef4444', color: '#fff', border: 'none', padding: '0 20px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}>
-              Add Friend
-            </button>
-          </div>
-
-          {/* Friends Item Row */}
-          {['Sarah Jenkins', 'Dave Miller', 'Alex Rivera'].map((name, idx) => (
-            <div key={idx} style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '14px 16px',
-              backgroundColor: '#f8fafc',
-              borderRadius: '10px',
-              marginBottom: '12px',
-              border: '1px solid #e2e8f0'
-            }}>
-              <span style={{ color: '#0f172a', fontWeight: '700', fontSize: '1rem' }}>{name}</span>
-              <span style={{ backgroundColor: '#e2e8f0', color: '#334155', padding: '4px 12px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: '600' }}>
-                {idx === 0 ? 'Commuting' : idx === 1 ? 'Idle' : 'Driving'}
+        <div className="space-y-3">
+          {friends.map((friend) => (
+            <div key={friend.id} className="flex justify-between items-center bg-gray-50 p-3 rounded-xl border border-gray-100">
+              <span className="font-semibold text-gray-700 text-sm">{friend.name}</span>
+              <span className="text-xs bg-slate-200 text-slate-700 px-2.5 py-1 rounded-full font-medium">
+                {friend.status}
               </span>
             </div>
           ))}
         </div>
-
-        {/* Right Side: Priority Notifications Card */}
-        <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', padding: '28px', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }}>
-          <h3 style={{ margin: '0 0 6px 0', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            🔔 Priority Notifications
-          </h3>
-          <p style={{ margin: '0 0 20px 0', color: '#64748b', fontSize: '0.88rem' }}>Alerts triggered by proximity & upvote thresholds</p>
-
-          <div style={{ backgroundColor: '#fff1f2', border: '1px solid #fecdd3', borderRadius: '12px', padding: '16px', marginBottom: '16px' }}>
-            <span style={{ color: '#9f1239', fontWeight: '800', fontSize: '0.8rem', display: 'block', marginBottom: '4px' }}>25+ UPVOTES</span>
-            <p style={{ margin: 0, color: '#881337', fontWeight: '600', fontSize: '0.95rem' }}>
-              High Upvote Alert: Major blockage reported 1.2 miles away near Downtown Connector!
-            </p>
-          </div>
-        </div>
-
       </div>
     </div>
   );
