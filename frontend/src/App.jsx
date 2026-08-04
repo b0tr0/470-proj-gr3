@@ -1,4 +1,5 @@
 import React from 'react';
+<<<<<<< HEAD
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
 // Base Components
@@ -41,11 +42,25 @@ const MainLayout = ({ children }) => {
       <AIChatbot />
     </div>
   );
+=======
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import Navbar from './components/Navbar';
+import Auth from './pages/Auth';
+import Feed from './pages/Feed';
+import Fuel from './pages/Fuel';
+
+
+// Route guarding to check if user info exists
+const ProtectedRoute = ({ children }) => {
+  const isAuthenticated = localStorage.getItem('userInfo');
+  return isAuthenticated ? children : <Navigate to="/" replace />;
+>>>>>>> origin/main
 };
 
 function App() {
   return (
     <Router>
+<<<<<<< HEAD
       <MainLayout>
         <Routes>
           {/* Public Auth Route */}
@@ -69,6 +84,17 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </MainLayout>
+=======
+      <div className="min-h-screen bg-gray-100">
+        <Navbar />
+        <Routes>
+          <Route path="/" element={<Auth />} />
+          <Route path="/feed" element={<ProtectedRoute><Feed /></ProtectedRoute>} />
+          <Route path="/fuel" element={<ProtectedRoute><Fuel /></ProtectedRoute>} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </div>
+>>>>>>> origin/main
     </Router>
   );
 }

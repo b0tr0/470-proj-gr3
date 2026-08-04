@@ -39,6 +39,7 @@ const reportSchema = new mongoose.Schema({
   deletedAt: { type: Date, default: null },
   deleteReason: { 
     type: String, 
+<<<<<<< HEAD
     enum: ['irrelevant', 'resolved', 'privacy', 'other'], default: null},
   isAnonymous: { 
     type: Boolean,
@@ -55,3 +56,9 @@ const reportSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 module.exports = mongoose.model('Report', reportSchema);
+=======
+    enum: ['irrelevant', 'resolved', 'privacy', 'other'], default: null}
+}, { timestamps: true });
+
+module.exports = mongoose.model('Report', reportSchema);
+>>>>>>> origin/main

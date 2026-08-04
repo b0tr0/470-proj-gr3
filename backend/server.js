@@ -5,7 +5,10 @@ const connectDB = require('./config/db.js');
 const authRoutes = require('./routes/authRoutes.js');
 const reportRoutes = require('./routes/reportRoutes.js');
 const fuelRoutes = require('./routes/fuelRoutes');
+<<<<<<< HEAD
 const hazardRoutes = require('./routes/hazardRoutes.js')
+=======
+>>>>>>> origin/main
 
 dotenv.config();
 connectDB();
@@ -20,7 +23,10 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/fuel', fuelRoutes);
+<<<<<<< HEAD
 app.use('/api/hazards', hazardRoutes);
+=======
+>>>>>>> origin/main
 
 
 app.get('/', (req, res) => {
