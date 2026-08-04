@@ -1,11 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import API from '../api';
-<<<<<<< HEAD
 import ExpirationBadge from '../components/ExpirationBadge';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-=======
->>>>>>> origin/main
 
 const Feed = () => {
     const user = JSON.parse(localStorage.getItem('userInfo'));
@@ -18,12 +15,9 @@ const Feed = () => {
     const [error, setError] = useState('');
     const [deletingReportId, setDeletingReportId] = useState(null);
     const [deleteReason, setDeleteReason] = useState('other');
-<<<<<<< HEAD
     const [location, setLocation] = useState(null);
     const [locating, setLocating] = useState(false);
     const [locationError, setLocationError] = useState('');
-=======
->>>>>>> origin/main
 
     // Fetch all reports for the primary newsfeed
     const fetchReports = async () => {
@@ -39,7 +33,6 @@ const Feed = () => {
         fetchReports();
     }, []);
 
-<<<<<<< HEAD
     // handle posting a new traffic alert (Feature 1)
     const handleCreateReport = async (e, isAnonymous = false) => {
         e.preventDefault();
@@ -55,28 +48,12 @@ const Feed = () => {
             setSeverity('moderate');
             setLocation(null);
             fetchReports(); // refresh the timeline feed
-=======
-    // Handle posting a new traffic alert (Feature 1)
-    const handleCreateReport = async (e) => {
-        e.preventDefault();
-        setError('');
-        try {
-            await API.post('/reports', { title, description, category, severity });
-            setTitle('');
-            setDescription('');
-            setSeverity('moderate');
-            fetchReports(); // Refresh the timeline feed
->>>>>>> origin/main
         } catch (err) {
             setError(err.response?.data?.message || 'Failed to submit report');
         }
     };
 
-<<<<<<< HEAD
     // handle voting updates
-=======
-    // Handle voting updates
->>>>>>> origin/main
     const handleVote = async (id, voteType) => {
         try {
             await API.put(`/reports/${id}/vote`, { voteType });
@@ -86,11 +63,7 @@ const Feed = () => {
         }
     };
 
-<<<<<<< HEAD
     // handle comment submissions
-=======
-    // Handle comment submissions
->>>>>>> origin/main
     const handleAddComment = async (e, reportId) => {
         e.preventDefault();
         const text = commentText[reportId];
@@ -105,11 +78,7 @@ const Feed = () => {
         }
     };
 
-<<<<<<< HEAD
     // moderator Flag action (Feature 2)
-=======
-    // Moderator Flag action (Feature 2)
->>>>>>> origin/main
     const handleModeratorAction = async (id, flag) => {
         try {
             await API.put(`/reports/${id}/flag`, { flag });
@@ -119,11 +88,7 @@ const Feed = () => {
         }
     };
 
-<<<<<<< HEAD
     // authority verification action (Feature 5)
-=======
-    // Authority verification action (Feature 5)
->>>>>>> origin/main
     const handleAuthorityAction = async (id, status) => {
         try {
             await API.put(`/reports/${id}/verify`, { status });
@@ -144,11 +109,7 @@ const Feed = () => {
         }
     };
 
-<<<<<<< HEAD
     const handlePrivilegedDelete = async (id) => {
-=======
-        const handlePrivilegedDelete = async (id) => {
->>>>>>> origin/main
         const reason = window.prompt('Reason? (irrelevant / resolved / privacy / other)', 'other');
         if (!reason) return;
         try {
@@ -159,7 +120,6 @@ const Feed = () => {
         }
     };
 
-<<<<<<< HEAD
     const handleToggleLocation = () => {
         if (location) {
             setLocation(null);
@@ -187,8 +147,6 @@ const Feed = () => {
         );
     };
 
-=======
->>>>>>> origin/main
     return (
         <div className="mx-auto max-w-4xl px-4 py-8 grid grid-cols-1 md:grid-cols-3 gap-6">
 
@@ -231,7 +189,6 @@ const Feed = () => {
                         <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm p-2 rounded transition">
                             Publish Alert
                         </button>
-<<<<<<< HEAD
                         <button
                             type="button"
                             onClick={(e) => handleCreateReport(e, true)}
@@ -255,10 +212,6 @@ const Feed = () => {
                         ? `Location Attached (tap to remove)`: 'Share My Location'}
                 </button>
                 {locationError && <p className="text-xs text-red-600">{locationError}</p>}
-=======
-                    </form>
-                </div>
->>>>>>> origin/main
             </div>
 
             {/* RIGHT COLUMN: NEWSFEED TIMELINE */}
@@ -273,7 +226,6 @@ const Feed = () => {
 
                             {/* Header Info */}
                             <div className="flex justify-between items-start">
-<<<<<<< HEAD
                                 <div className="flex flex-col items-start gap-1">
                                     <span className="text-xs font-bold uppercase tracking-wider bg-slate-100 text-slate-700 px-2 py-0.5 rounded">
                                         {report.category}
@@ -297,24 +249,12 @@ const Feed = () => {
                                         </span>
                                         {!report.isAnonymous && ` (${report.postedBy?.role})`}
                                         {' • '} {new Date(report.createdAt).toLocaleTimeString()}
-=======
-                                <div>
-                                    <span className="text-xs font-bold uppercase tracking-wider bg-slate-100 text-slate-700 px-2 py-0.5 rounded mr-2">
-                                        {report.category}
-                                    </span>
-                                    <h3 className="text-lg font-bold text-gray-900 mt-1">{report.title}</h3>
-                                    <p className="text-xs text-gray-500 mt-0.5">
-                                        Posted by <span className="font-semibold">{report.postedBy?.username || 'Unknown'}</span> ({report.postedBy?.role}) • {new Date(report.createdAt).toLocaleTimeString()}
->>>>>>> origin/main
                                     </p>
                                 </div>
 
                                 {/* Badges for Moderator and Authority Statuses */}
                                 <div className="flex flex-col items-end space-y-1">
-<<<<<<< HEAD
                                     <ExpirationBadge expiresAt={report.expiresAt} />
-=======
->>>>>>> origin/main
                                     {report.authorityStatus !== 'unverified' && (
                                         <span className={`text-xs px-2 py-0.5 rounded font-bold uppercase tracking-wide border ${['verified', 'confirmed'].includes(report.authorityStatus) ? 'bg-green-50 border-green-300 text-green-700' : 'bg-red-50 border-red-300 text-red-700'
                                             }`}>
@@ -332,7 +272,6 @@ const Feed = () => {
                             {/* Description Body */}
                             <p className="text-sm text-gray-700 leading-relaxed">{report.description}</p>
 
-<<<<<<< HEAD
                             {/* Shared Location Preview */}
                             {report.location?.lat && report.location?.lng && (
                                 <div className="rounded-lg overflow-hidden border mx-auto" 
@@ -356,8 +295,6 @@ const Feed = () => {
                                 </div>
                             )}
 
-=======
->>>>>>> origin/main
                             {/* Interactions Section (Voting) */}
                             <div className="flex items-center space-x-4 border-t border-b border-gray-100 py-2">
                                 <button onClick={() => handleVote(report._id, 'upvote')} className="flex items-center space-x-1 text-xs font-semibold text-gray-600 hover:text-green-600">
@@ -463,8 +400,4 @@ const Feed = () => {
     );
 };
 
-<<<<<<< HEAD
 export default Feed;
-=======
-export default Feed;
->>>>>>> origin/main

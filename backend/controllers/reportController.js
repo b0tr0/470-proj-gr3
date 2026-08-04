@@ -1,5 +1,4 @@
 const Report = require('../models/Report');
-<<<<<<< HEAD
 const { calculateExpiresAt } = require('../models/Expiration');
 
 const createReport = async (req, res) => {
@@ -16,13 +15,6 @@ const createReport = async (req, res) => {
       expiresAt: calculateExpiresAt(category, severity),
       location: location?.lat && location?.lng ? location : undefined
     });
-=======
-
-const createReport = async (req, res) => {
-  const { title, description, imageUrl, category, severity } = req.body;
-  try {
-    const report = await Report.create({ postedBy: req.user._id, title, description, imageUrl, category, severity });
->>>>>>> origin/main
     res.status(201).json(report);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -32,18 +24,13 @@ const createReport = async (req, res) => {
 const getReports = async (req, res) => {
   try {
     const { severity } = req.query;
-<<<<<<< HEAD
     const filter = { isDeleted: false, expiresAt: { $gt: new Date() } };
-=======
-    const filter = { isDeleted: false };
->>>>>>> origin/main
     if (severity) filter.severity = severity;
 
     const reports = await Report.find(filter)
       .populate('postedBy', 'username role')
       .sort({ createdAt: -1 });
 
-<<<<<<< HEAD
     const viewerRole = req.user?.role;
 
     const hidden = reports.map((report) => {
@@ -55,9 +42,6 @@ const getReports = async (req, res) => {
     });
 
     res.json(hidden);
-=======
-    res.json(reports);
->>>>>>> origin/main
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -150,8 +134,4 @@ const deleteReport = async (req, res) => {
   }
 };
 
-<<<<<<< HEAD
 module.exports = { createReport, getReports, voteReport, commentReport, flagReport, verifyReport, deleteReport };
-=======
-module.exports = { createReport, getReports, voteReport, commentReport, flagReport, verifyReport, deleteReport };
->>>>>>> origin/main
