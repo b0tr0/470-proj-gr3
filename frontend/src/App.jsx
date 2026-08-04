@@ -14,7 +14,7 @@ import AuthorityDashboard from './pages/AuthorityDashboard';
 // Components used as Pages / Widgets
 import AIChatbot from './components/AIChatbot';
 import Forum from './components/Forum';
-import NotificationsSystem from './components/NotificationsSystem';
+import NotificationSystem from './components/NotificationSystem';
 import ReportForm from './components/ReportForm';
 import TrendAnalysisChart from './components/TrendAnalysisChart';
 import UserNetwork from './components/UserNetwork';
@@ -34,7 +34,7 @@ const MainLayout = ({ children }) => {
     <div className="min-h-screen bg-gray-100 relative">
       {/* Auth PAGE FIX */}
       {!isAuthPage && <Navbar />}
-      {!isAuthPage && <NotificationsSystem />}
+      {!isAuthPage && <NotificationSystem />}
 
       {children}
 
