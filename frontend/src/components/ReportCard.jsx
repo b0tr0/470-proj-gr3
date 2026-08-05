@@ -1,149 +1,67 @@
-import React, { useState } from 'react';
+import React from 'react';
 
-export default function ReportCard({ report, userRole, onVote, onUpdateStatus, onDelete }) {
-  const [commentText, setCommentText] = useState('');
-
-  const handleCommentSubmit = (e) => {
-    e.preventDefault();
-    if (!commentText.trim()) return;
+export default function ReportCard({ report, userRole, currentUserId, onDelete }) {
+  // Feature 20: Calculate remaining time until expiration
+  const calculateRemainingTime = (expiresAt) => {
+    const diff = new Date(expiresAt) - new Date();
+    if (diff <= 0) return 'Expired';
     
-    // Pass comment up to parent if callback exists
-    if (report.onAddComment) {
-      report.onAddComment(report.id, commentText);
-    }
-    setCommentText('');
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    return `${hours}h ${minutes}m remaining`;
   };
 
+  // Feature 13: Permission check matching reportController.js
+  const isOwner = report.postedBy?._id === currentUserId;
+  const isPrivileged = ['moderator', 'authority'].includes(userRole);
+  const canDelete = isOwner || isPrivileged;
+
   return (
-    <div className={`card report-card type-${report.category || 'info'}`}>
-      {/* Card Header & Badges */}
-      <div className="report-header">
-        <div>
-          <span className={`badge badge-category cat-${report.category}`}>
-            {report.category ? report.category.toUpperCase() : 'GENERAL'}
-          </span>
-          <h3 className="report-title">{report.title}</h3>
-          <p className="report-subtext">
-            📍 {report.location || 'Unknown Location'} • Posted by{' '}
-            <span className="author-name">{report.author || 'Anonymous'}</span> •{' '}
-            {report.timestamp || 'Recently'}
-          </p>
-        </div>
-
-        <div className="report-badges">
-          {report.status && (
-            <span className={`badge badge-authority status-${report.status.toLowerCase()}`}>
-              ✓ {report.status}
-            </span>
-          )}
-          {report.flagged && (
-            <span className="badge badge-flagged">⚠️ Flagged</span>
-          )}
-        </div>
-      </div>
-
-      {/* Description Body */}
-      <p className="report-description">{report.description}</p>
-
-      {/* Voting & General Actions */}
-      <div className="report-actions">
-        <div className="vote-buttons">
-          <button 
-            className="btn-vote" 
-            onClick={() => onVote && onVote(report.id, 'up')}
-            title="Upvote report"
-          >
-            ▲ <span className="vote-counter">{report.upvotes || 0}</span>
-          </button>
-          <button 
-            className="btn-vote" 
-            onClick={() => onVote && onVote(report.id, 'down')}
-            title="Downvote report"
-          >
-            ▼ <span className="vote-counter">{report.downvotes || 0}</span>
-          </button>
-        </div>
-
-        {/* Quick Delete button available for Mod/Auth */}
-        {(userRole === 'moderator' || userRole === 'authority') && (
-          <button 
-            className="btn-delete" 
-            onClick={() => onDelete && onDelete(report.id)}
-          >
-            🗑️ Delete
-          </button>
-        )}
-      </div>
-
-      {/* Dynamic Role-Based Panel: Moderator */}
-      {userRole === 'moderator' && (
-        <div className="panel mod-panel" style={{ marginTop: '1rem' }}>
-          <span className="panel-title mod-title">🛡️ Moderator Actions</span>
-          <div className="panel-actions">
-            <button className="btn-mod-warning">
-              ⚠️ Flag Content
-            </button>
-            <button 
-              className="btn-mod-danger" 
-              onClick={() => onDelete && onDelete(report.id)}
-            >
-               Remove Post
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Dynamic Role-Based Panel: Authority */}
-      {userRole === 'authority' && (
-        <div className="panel authority-panel" style={{ marginTop: '1rem' }}>
-          <span className="panel-title authority-title">🚔 Authority Actions</span>
-          <div className="panel-actions">
-            <button 
-              className="btn-auth-success"
-              onClick={() => onUpdateStatus && onUpdateStatus(report.id, 'Verified')}
-            >
-              ✓ Verify Incident
-            </button>
-            <button 
-              className="btn-auth-warning"
-              onClick={() => onUpdateStatus && onUpdateStatus(report.id, 'Resolved')}
-            >
-              Mark Resolved
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Comments Section */}
-      <div className="comments-section" style={{ marginTop: '1.25rem' }}>
-        <span className="comments-header">
-          💬 Comments ({report.comments ? report.comments.length : 0})
+    <div className="bg-white p-4 rounded-lg shadow mb-4 border border-gray-200">
+      {/* Header: Report ID and Expiration Badge */}
+      <div className="flex justify-between items-center mb-2">
+        {/* Feature 6: Report ID */}
+        <span className="text-xs font-mono bg-gray-100 text-gray-600 px-2 py-1 rounded">
+          ID: {report._id}
         </span>
-        
-        {report.comments && report.comments.length > 0 && (
-          <div className="comments-list" style={{ margin: '0.5rem 0' }}>
-            {report.comments.map((c, idx) => (
-              <div key={idx} className="comment-item" style={{ fontSize: '0.85rem', padding: '0.25rem 0' }}>
-                <strong className="comment-author">{c.author || 'User'}: </strong>
-                <span>{c.text}</span>
-              </div>
-            ))}
-          </div>
-        )}
 
-        <form onSubmit={handleCommentSubmit} className="comment-form" style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-          <input 
-            type="text" 
-            placeholder="Write a comment..."
-            value={commentText}
-            onChange={(e) => setCommentText(e.target.value)}
-            className="form-input comment-input"
-            style={{ flex: 1 }}
+        {/* Feature 20: Expiration Timer */}
+        {report.expiresAt && (
+          <span className="text-xs font-semibold bg-amber-100 text-amber-800 px-2 py-1 rounded-full">
+            ⏳ {calculateRemainingTime(report.expiresAt)}
+          </span>
+        )}
+      </div>
+
+      {/* Title & Description */}
+      <h3 className="text-lg font-bold text-gray-800">{report.title}</h3>
+      <p className="text-gray-600 text-sm my-2">{report.description}</p>
+
+      {/* Feature 18: Image URL Display */}
+      {report.imageUrl && (
+        <div className="my-3">
+          <img 
+            src={report.imageUrl} 
+            alt="Report Attachment" 
+            className="w-full max-h-64 object-cover rounded-md border"
+            onError={(e) => { e.target.style.display = 'none'; }} // Hide if image broken
           />
-          <button type="submit" className="btn btn-secondary-sm">
-            Post
+        </div>
+      )}
+
+      {/* Footer: User Info & Delete Action */}
+      <div className="flex justify-between items-center mt-4 pt-2 border-t border-gray-100 text-xs text-gray-500">
+        <span>Posted by: {report.postedBy?.username || 'Anonymous'}</span>
+
+        {/* Feature 13: Role-based Deletion Button */}
+        {canDelete && (
+          <button
+            onClick={() => onDelete(report._id)}
+            className="bg-red-50 text-red-600 hover:bg-red-100 font-medium px-3 py-1 rounded transition-colors"
+          >
+            Delete
           </button>
-        </form>
+        )}
       </div>
     </div>
   );

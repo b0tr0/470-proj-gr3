@@ -1,137 +1,171 @@
 const Report = require('../models/Report');
-const { calculateExpiresAt } = require('../models/Expiration');
 
+// @desc    Create a new report (Supports both Logged-in & Anonymous)
+// @route   POST /api/reports
+// @access  Public
 const createReport = async (req, res) => {
-  const { title, description, imageUrl, category, severity, isAnonymous, location } = req.body;
   try {
-    const report = await Report.create({ 
-      postedBy: req.user._id, 
-      title, 
-      description, 
-      imageUrl, 
-      category, 
-      severity, 
-      isAnonymous: !!isAnonymous,
-      expiresAt: calculateExpiresAt(category, severity),
-      location: location?.lat && location?.lng ? location : undefined
+    const { title, description, category, severity, location, imageUrl, expiresAt } = req.body;
+
+    // Assign user ID if authenticated, otherwise set to null for anonymous users
+    const userId = req.user ? req.user._id : null;
+
+    const report = await Report.create({
+      title,
+      description,
+      category,
+      severity,
+      location,
+      imageUrl,
+      postedBy: userId,
+      isAnonymous: !userId,
+      ...(expiresAt && { expiresAt }),
     });
+
     res.status(201).json(report);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(400).json({ message: error.message });
   }
 };
 
+// @desc    Get all active and non-expired reports
+// @route   GET /api/reports
+// @access  Public
 const getReports = async (req, res) => {
   try {
-    const { severity } = req.query;
-    const filter = { isDeleted: false, expiresAt: { $gt: new Date() } };
-    if (severity) filter.severity = severity;
-
-    const reports = await Report.find(filter)
-      .populate('postedBy', 'username role')
+    const reports = await Report.find({ 
+      isDeleted: false,
+      expiresAt: { $gt: new Date() } // Filter out expired reports automatically
+    })
+      .populate('postedBy', 'name email')
       .sort({ createdAt: -1 });
 
-    const viewerRole = req.user?.role;
-
-    const hidden = reports.map((report) => {
-      const obj = report.toObject();
-      if (obj.isAnonymous && viewerRole !== 'authority') {
-        obj.postedBy = { username: 'Anonymous', role: null}
-      }
-      return obj;
-    });
-
-    res.json(hidden);
+    res.status(200).json(reports);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
+// @desc    Vote on a report
+// @route   PUT /api/reports/:id/vote
+// @access  Private
 const voteReport = async (req, res) => {
-  const { voteType } = req.body;
-  const userId = req.user._id;
   try {
     const report = await Report.findById(req.params.id);
-    if (!report) return res.status(404).json({ message: 'Report not found' });
 
-    report.upvotes = report.upvotes.filter(id => id.toString() !== userId.toString());
-    report.downvotes = report.downvotes.filter(id => id.toString() !== userId.toString());
+    if (!report) {
+      return res.status(404).json({ message: 'Report not found' });
+    }
 
-    if (voteType === 'upvote') report.upvotes.push(userId);
-    if (voteType === 'downvote') report.downvotes.push(userId);
+    if (req.user && !report.upvotes.includes(req.user._id)) {
+      report.upvotes.push(req.user._id);
+      await report.save();
+    }
 
-    await report.save();
-    res.json(report);
+    res.status(200).json(report);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(400).json({ message: error.message });
   }
 };
 
+// @desc    Comment on a report
+// @route   POST /api/reports/:id/comment
+// @access  Private/Public
 const commentReport = async (req, res) => {
-  const { text } = req.body;
   try {
+    const { text } = req.body;
     const report = await Report.findById(req.params.id);
-    if (!report) return res.status(404).json({ message: 'Report not found' });
 
-    report.comments.push({ user: req.user._id, username: req.user.username, text });
+    if (!report) {
+      return res.status(404).json({ message: 'Report not found' });
+    }
+
+    const comment = {
+      text,
+      user: req.user ? req.user._id : null,
+      username: req.user ? req.user.name : 'Anonymous',
+      createdAt: new Date(),
+    };
+
+    report.comments.push(comment);
     await report.save();
+
     res.status(201).json(report);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(400).json({ message: error.message });
   }
 };
 
+// @desc    Flag a report
+// @route   PUT /api/reports/:id/flag
+// @access  Private/Moderator
 const flagReport = async (req, res) => {
-  const { flag } = req.body;
   try {
+    const { flagType } = req.body;
     const report = await Report.findById(req.params.id);
-    if (!report) return res.status(404).json({ message: 'Report not found' });
 
-    report.moderatorFlag = flag;
+    if (!report) {
+      return res.status(404).json({ message: 'Report not found' });
+    }
+
+    report.moderatorFlag = flagType || 'false/misleading';
     await report.save();
-    res.json(report);
+
+    res.status(200).json(report);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(400).json({ message: error.message });
   }
 };
 
+// @desc    Verify a report
+// @route   PUT /api/reports/:id/verify
+// @access  Private/Authority
 const verifyReport = async (req, res) => {
-  const { status } = req.body;
   try {
+    const { status } = req.body;
     const report = await Report.findById(req.params.id);
-    if (!report) return res.status(404).json({ message: 'Report not found' });
 
-    report.authorityStatus = status;
+    if (!report) {
+      return res.status(404).json({ message: 'Report not found' });
+    }
+
+    report.authorityStatus = status || 'verified';
     await report.save();
-    res.json(report);
+
+    res.status(200).json(report);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(400).json({ message: error.message });
   }
 };
 
+// @desc    Delete a report (Soft Delete)
+// @route   DELETE /api/reports/:id
+// @access  Private
 const deleteReport = async (req, res) => {
-  const { reason } = req.body; // optional: 'irrelevant' | 'resolved' | 'privacy' | 'other'
   try {
     const report = await Report.findById(req.params.id);
-    if (!report) return res.status(404).json({ message: 'Report not found' });
 
-    const isOwner = report.postedBy.toString() === req.user._id.toString();
-    const isPrivileged = ['moderator', 'authority'].includes(req.user.role);
-
-    if (!isOwner && !isPrivileged) {
-      return res.status(403).json({ message: 'Not authorized to delete this report' });
+    if (!report) {
+      return res.status(404).json({ message: 'Report not found' });
     }
 
     report.isDeleted = true;
-    report.deletedBy = req.user._id;
+    report.deletedBy = req.user ? req.user._id : null;
     report.deletedAt = new Date();
-    report.deleteReason = reason || 'other';
-
     await report.save();
-    res.json({ message: 'Report deleted successfully' });
+
+    res.status(200).json({ id: req.params.id, message: 'Report removed' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(400).json({ message: error.message });
   }
 };
 
-module.exports = { createReport, getReports, voteReport, commentReport, flagReport, verifyReport, deleteReport };
+module.exports = {
+  createReport,
+  getReports,
+  voteReport,
+  commentReport,
+  flagReport,
+  verifyReport,
+  deleteReport,
+};

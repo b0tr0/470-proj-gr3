@@ -1,7 +1,12 @@
 const mongoose = require('mongoose');
 
 const reportSchema = new mongoose.Schema({
-  postedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  postedBy: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'User', 
+    required: false, //  false for Anonymous users, true for logged in users
+    default: null 
+  },
   title: { type: String, required: true },
   description: { type: String, required: true },
   imageUrl: { type: String, default: '' }, // Holds URL from image host
@@ -46,7 +51,8 @@ const reportSchema = new mongoose.Schema({
   },
   expiresAt: { 
     type: Date,
-    required: true
+    required: true,
+    default: () => new Date(Date.now() + 24 * 60 * 60 * 1000) //Default expiration set to 24 hours from report creation
   },
   location: {
     lat: { type: Number },
@@ -55,6 +61,3 @@ const reportSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 module.exports = mongoose.model('Report', reportSchema);
-
-    
-
