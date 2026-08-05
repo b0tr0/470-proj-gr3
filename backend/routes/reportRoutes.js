@@ -1,16 +1,50 @@
 const express = require('express');
+
 const router = express.Router();
-const { protect, authorize } = require('../middleware/authMiddleware');
-const { 
-  createReport, getReports, voteReport, commentReport, flagReport, verifyReport 
+
+const {
+
+  createReport,
+
+  getReports,
+
+  voteReport,
+
+  commentReport,
+
+  flagReport,
+
+  verifyReport,
+
+  deleteReport,
+
 } = require('../controllers/reportController');
-const { deleteReport } = require('../controllers/reportController');
 
-router.delete('/:id', protect, deleteReport);
-router.route('/').post(protect, createReport).get(getReports);
-router.route('/:id/vote').put(protect, voteReport);
-router.route('/:id/comment').post(protect, commentReport);
-router.route('/:id/flag').put(protect, authorize('moderator'), flagReport);
-router.route('/:id/verify').put(protect, authorize('authority'), verifyReport);
+const { protect } = require('../middleware/authMiddleware');
 
-module.exports = router;
+
+
+// Public routes
+
+router.post('/', createReport);
+
+router.get('/', getReports);
+
+router.delete('/:id', deleteReport);
+
+
+
+// Protected routes (Login Required)
+
+router.put('/:id/vote', protect, voteReport);
+
+router.post('/:id/comment', protect, commentReport);
+
+router.put('/:id/flag', protect, flagReport);
+
+router.put('/:id/verify', protect, verifyReport);
+
+
+
+module.exports = router; 
+

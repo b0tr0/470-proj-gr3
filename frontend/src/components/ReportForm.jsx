@@ -5,6 +5,7 @@ export default function ReportForm({ onSubmitReport }) {
   const [category, setCategory] = useState('jam');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
   const [error, setError] = useState('');
 
   const handleSubmit = (e) => {
@@ -19,13 +20,14 @@ export default function ReportForm({ onSubmitReport }) {
       category,
       description,
       location,
+      imageUrl,
       timestamp: 'Just now',
     });
 
-    // Reset form
     setTitle('');
     setDescription('');
     setLocation('');
+    setImageUrl('');
     setError('');
   };
 
@@ -70,6 +72,18 @@ export default function ReportForm({ onSubmitReport }) {
             placeholder="e.g., Highway 101, Exit 4"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
+            className="form-input"
+          />
+        </div>
+
+        {/* Feature 18: Image URL Attachment Input */}
+        <div className="form-group">
+          <label className="form-label">Image URL (Optional)</label>
+          <input 
+            type="url" 
+            placeholder="https://example.com/image.jpg"
+            value={imageUrl}
+            onChange={(e) => setImageUrl(e.target.value)}
             className="form-input"
           />
         </div>

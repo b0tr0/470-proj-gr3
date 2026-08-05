@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 
 // Base Components
 import Navbar from './components/Navbar';
@@ -25,6 +25,34 @@ const ProtectedRoute = ({ children }) => {
   return isAuthenticated ? children : <Navigate to="/" replace />;
 };
 
+// Helper component to handle navigation after report submission
+const ReportFormWrapper = () => {
+  const navigate = useNavigate();
+
+  const handleReportSubmit = async (formData) => {
+    try {
+      const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+      const response = await fetch('/api/reports', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${userInfo.token || ''}`,
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (response.ok) {
+        // Navigate to feed upon successful submission
+        navigate('/feed');
+      }
+    } catch (error) {
+      console.error('Failed to submit report:', error);
+    }
+  };
+
+  return <ReportForm onSubmitReport={handleReportSubmit} />;
+};
+
 // Layout Component to conditionally show Navbar & Notifications
 const MainLayout = ({ children }) => {
   const location = useLocation();
@@ -32,7 +60,6 @@ const MainLayout = ({ children }) => {
 
   return (
     <div className="min-h-screen bg-gray-100 relative">
-      {/* Auth PAGE FIX */}
       {!isAuthPage && <Navbar />}
       {!isAuthPage && <NotificationSystem />}
 
@@ -63,7 +90,9 @@ function App() {
           {/* Authority Routes */}
           <Route path="/authority" element={<ProtectedRoute><AuthorityDashboard /></ProtectedRoute>} />
           <Route path="/authority-dashboard" element={<ProtectedRoute><AuthorityDashboard /></ProtectedRoute>} />
-          <Route path="/report" element={<ProtectedRoute><ReportForm /></ProtectedRoute>} />
+          
+          {/* Feature 18 & Creation Route */}
+          <Route path="/report" element={<ProtectedRoute><ReportFormWrapper /></ProtectedRoute>} />
 
           {/* Fallback Route */}
           <Route path="*" element={<Navigate to="/" replace />} />

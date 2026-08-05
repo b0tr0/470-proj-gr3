@@ -3,6 +3,10 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 require('dotenv').config();
 
+// Import Routes
+const reportRoutes = require('./routes/reportRoutes');
+const fuelRoutes = require('./routes/fuelRoutes'); 
+
 const app = express();
 
 // Middleware
@@ -14,6 +18,9 @@ app.get('/', (req, res) => {
   res.send('Backend Server is running...');
 });
 
+// Mount API Routes
+app.use('/api/reports', reportRoutes);
+app.use('/api/fuel', fuelRoutes); 
 // Database Connection & Server Listen
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/your_db_name';

@@ -1,13 +1,22 @@
 const mongoose = require('mongoose');
 
 const fuelStatusSchema = new mongoose.Schema({
-  stationName: { type: String, required: true },
-  status: { 
+  stationName: { 
     type: String, 
-    enum: ['available', 'long line', 'out of fuel'], 
     required: true 
   },
-  reportedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  status: { 
+    type: String, 
+    // Updated enum values to match front-end dropdown options
+    enum: ['Available', 'Long Queue Present', 'Out of Fuel', 'available', 'long line', 'out of fuel'], 
+    required: true 
+  },
+  reportedBy: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'User', 
+    required: false, // Set to false to support anonymous submissions
+    default: null 
+  },
   // Simple coordinates array [longitude, latitude]
   coordinates: {
     type: [Number], 

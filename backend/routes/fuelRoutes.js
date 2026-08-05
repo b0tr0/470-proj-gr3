@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { protect } = require('../middleware/authMiddleware');
-const { reportFuel, getFuelStatuses } = require('../controllers/fuelController');
+const { getFuelStatuses, createFuelStatus } = require('../controllers/fuelController');
 
-router.route('/').post(protect, reportFuel).get(getFuelStatuses);
+// Clean root-level endpoints
+router.get('/', getFuelStatuses);
+router.post('/', createFuelStatus);
 
 module.exports = router;

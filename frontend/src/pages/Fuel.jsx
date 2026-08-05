@@ -3,7 +3,6 @@ import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaf
 import API from '../api';
 import 'leaflet/dist/leaflet.css';
 
-
 const Fuel = () => {
     const [stations, setStations] = useState([]);
     const [stationName, setStationName] = useState('');
@@ -39,16 +38,16 @@ const Fuel = () => {
         e.preventDefault();
         setMessage('');
 
-        // 1. Fallback fallback safety checks for optional coordinates
+        // Fallback safety checks for optional coordinates [Longitude, Latitude]
         const payloadCoords = selectedCoords && selectedCoords.length === 2
             ? [selectedCoords[1], selectedCoords[0]]
             : [];
 
         try {
-            // 2. Transmit the payload explicitly matching the backend schema
+            // Transmit payload explicitly matching backend schema
             await API.post('/fuel', {
-                stationName: stationName.trim(), // Strips accidental spaces
-                status: status || 'available',   // Ensures status never falls back to an empty string
+                stationName: stationName.trim(),
+                status: status || 'available',
                 coordinates: payloadCoords
             });
 
@@ -129,7 +128,7 @@ const Fuel = () => {
                                     <div className="text-xs space-y-1">
                                         <strong className="text-sm font-bold text-slate-900 block">{station.stationName}</strong>
                                         <div className="capitalize font-semibold">Status: {station.status}</div>
-                                        <div className="text-gray-400">By: {station.reportedBy?.username}</div>
+                                        <div className="text-gray-400">By: {station.reportedBy?.username || 'Anonymous'}</div>
                                     </div>
                                 </Popup>
                             </Marker>
@@ -150,7 +149,7 @@ const Fuel = () => {
                                     <div key={s._id} className="flex justify-between items-center text-xs p-2.5 bg-gray-50 border rounded-lg">
                                         <div>
                                             <span className="font-bold text-gray-900 block">{s.stationName}</span>
-                                            <span className="text-gray-500">Reported by: {s.reportedBy?.username || 'User'}</span>
+                                            <span className="text-gray-500">Reported by: {s.reportedBy?.username || 'Anonymous'}</span>
                                         </div>
                                         <div className="text-right">
                                             <span className={`inline-block px-2 py-0.5 rounded font-bold uppercase mr-3 ${s.status === 'available' ? 'bg-green-100 text-green-800' :
