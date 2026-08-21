@@ -1,58 +1,39 @@
-const FuelStatus = require('../models/fuelStatus');
+const FuelStatus = require('../models/fuelstatus');
 
-// @desc    Create a new fuel status update
-// @route   POST /api/fuel
-// @access  Public (Supports Anonymous & Authenticated)
+// GET function
+const getFuelStatus = async (req, res) => {
+  try {
+    const statusList = await FuelStatus.find().sort({ createdAt: -1 });
+    res.status(200).json(statusList);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// POST function
 const createFuelStatus = async (req, res) => {
   try {
-    const { stationName, status, coordinates, latitude, longitude } = req.body;
+    const { stationName, locationName, location, fuelType, queueLength, status, username } = req.body;
 
-    // Handle coordinates whether sent as an array or individual lat/lng
-    let finalCoordinates = coordinates;
-    if (!finalCoordinates && latitude && longitude) {
-      finalCoordinates = [parseFloat(longitude), parseFloat(latitude)];
-    }
-
-    // Validation check for basic fields
-    if (!stationName || !status || !finalCoordinates) {
-      return res.status(400).json({ 
-        message: 'Please provide station name, status, and coordinates' 
-      });
-    }
-
-    // Safely extract user ID if authenticated, or set to null if anonymous
-    const reportedBy = req.user ? req.user._id : null;
-
-    const newFuelStatus = await FuelStatus.create({
+    const newFuelStatus = new FuelStatus({
       stationName,
+      locationName: locationName || location,
+      fuelType,
+      queueLength,
       status,
-      coordinates: finalCoordinates,
-      reportedBy,
+      username: username || req.user?.username,
+      reportedBy: req.user?._id || req.body.reportedBy
     });
 
-    res.status(201).json(newFuelStatus);
+    const savedFuelStatus = await newFuelStatus.save();
+    res.status(201).json(savedFuelStatus);
   } catch (error) {
-    console.error('Error creating fuel status:', error);
-    res.status(500).json({ message: error.message || 'Server Error' });
+    res.status(400).json({ message: error.message });
   }
 };
 
-// @desc    Get all fuel statuses
-// @route   GET /api/fuel
-// @access  Public
-const getFuelStatuses = async (req, res) => {
-  try {
-    const statuses = await FuelStatus.find()
-      .populate('reportedBy', 'username')
-      .sort({ createdAt: -1 });
-    res.status(200).json(statuses);
-  } catch (error) {
-    console.error('Error fetching fuel statuses:', error);
-    res.status(500).json({ message: error.message || 'Server Error' });
-  }
-};
-
+// Properly export named objects
 module.exports = {
-  createFuelStatus,
-  getFuelStatuses,
+  getFuelStatus,
+  createFuelStatus
 };

@@ -1,9 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const { getFuelStatuses, createFuelStatus } = require('../controllers/fuelController');
+// Controller import
+const { getFuelStatus, createFuelStatus } = require('../controllers/fuelController');
+const { protect } = require('../middleware/authMiddleware'); // Optional middleware
 
-// Clean root-level endpoints
-router.get('/', getFuelStatuses);
-router.post('/', createFuelStatus);
+// Route Definitions
+router.get('/', getFuelStatus);
+router.post('/', protect, createFuelStatus);
 
 module.exports = router;

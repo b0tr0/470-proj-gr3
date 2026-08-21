@@ -1,172 +1,153 @@
 import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
-import API from '../api';
-import 'leaflet/dist/leaflet.css';
+import axios from 'axios';
 
-const Fuel = () => {
-    const [stations, setStations] = useState([]);
-    const [stationName, setStationName] = useState('');
-    const [status, setStatus] = useState('available');
-    // Default map viewpoint set near Dhaka city coordinates
-    const [selectedCoords, setSelectedCoords] = useState([23.8103, 90.4125]);
-    const [message, setMessage] = useState('');
+export default function Fuel() {
+  const [fuelStations, setFuelStations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [formData, setFormData] = useState({
+    stationName: '',
+    locationName: '',
+    fuelType: 'Octane',
+    queueLength: 'Medium',
+    available: true,
+  });
 
-    const fetchFuelStatuses = async () => {
-        try {
-            const { data } = await API.get('/fuel');
-            setStations(data);
-        } catch (err) {
-            console.error('Error fetching fuel data:', err);
-        }
-    };
+  const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
 
-    useEffect(() => {
-        fetchFuelStatuses();
-    }, []);
+  useEffect(() => {
+    fetchFuelData();
+  }, []);
 
-    // Helper component to capture click events on the map canvas
-    const MapClickHandler = () => {
-        useMapEvents({
-            click: (e) => {
-                setSelectedCoords([e.latlng.lat, e.latlng.lng]);
-            },
-        });
-        return null;
-    };
+  const fetchFuelData = async () => {
+    try {
+      setLoading(true);
+      const res = await axios.get('http://localhost:5000/api/fuel');
+      setFuelStations(res.data || []);
+    } catch (err) {
+      console.error('Error fetching fuel data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setMessage('');
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.stationName || !formData.locationName) {
+      alert('Please fill in Station Name and Location.');
+      return;
+    }
 
-        // Fallback safety checks for optional coordinates [Longitude, Latitude]
-        const payloadCoords = selectedCoords && selectedCoords.length === 2
-            ? [selectedCoords[1], selectedCoords[0]]
-            : [];
+    try {
+      const token = localStorage.getItem('token');
+      const payload = {
+        stationName: formData.stationName,
+        locationName: formData.locationName,
+        fuelType: formData.fuelType,
+        queueLength: formData.queueLength,
+        status: formData.available ? 'available' : 'out of fuel',
+        reportedBy: userInfo._id || userInfo.id,
+        username: userInfo.username || userInfo.name || 'Registered User'
+      };
 
-        try {
-            // Transmit payload explicitly matching backend schema
-            await API.post('/fuel', {
-                stationName: stationName.trim(),
-                status: status || 'available',
-                coordinates: payloadCoords
-            });
+      // Send token in Headers properly
+      await axios.post('http://localhost:5000/api/fuel', payload, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
 
-            setStationName('');
-            setMessage('Station report dropped successfully!');
-            fetchFuelStatuses();
-        } catch (err) {
-            setMessage(err.response?.data?.message || 'Failed to submit status');
-        }
-    };
+      alert('Fuel status updated successfully!');
+      setFormData({
+        stationName: '',
+        locationName: '',
+        fuelType: 'Octane',
+        queueLength: 'Medium',
+        available: true,
+      });
+      fetchFuelData();
+    } catch (err) {
+      console.error('Failed to post fuel update:', err.response?.data || err.message);
+      alert(err.response?.data?.message || 'Failed to submit fuel update. Please log in again.');
+    }
+  };
 
-    // Helper function to calculate time relevancy highlights
-    const getTimeAgo = (timestamp) => {
-        const diffInMinutes = Math.floor((new Date() - new Date(timestamp)) / 60000);
-        if (diffInMinutes < 1) return { text: 'Just now', color: 'text-green-600 font-bold' };
-        if (diffInMinutes < 60) return { text: `${diffInMinutes}m ago`, color: 'text-green-600 font-bold' };
-        const diffInHours = Math.floor(diffInMinutes / 60);
-        if (diffInHours < 24) return { text: `${diffInHours}h ago`, color: 'text-amber-600 font-medium' };
-        return { text: `${Math.floor(diffInHours / 24)}d ago`, color: 'text-gray-500' };
-    };
+  const getAuthorName = (item) => {
+    if (item.isAnonymous) return 'Anonymous';
+    if (item.username && item.username !== 'User') return item.username;
+    if (typeof item.reportedBy === 'object' && item.reportedBy !== null) {
+      return item.reportedBy.username || item.reportedBy.name;
+    }
+    return userInfo.username || userInfo.name || 'Registered Member';
+  };
 
-    return (
-        <div className="mx-auto max-w-6xl px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+  return (
+    <div style={{ padding: '24px', maxWidth: '800px', margin: '0 auto', color: '#fff' }}>
+      <h2 style={{ fontSize: '1.8rem', fontWeight: 'bold', marginBottom: '16px' }}>⛽ Fuel Availability & Station Map</h2>
 
-            {/* UPDATE SECTION FORM PANEL */}
-            <div className="lg:col-span-1 bg-white p-5 rounded-xl shadow-sm border border-gray-200 h-fit">
-                <h3 className="text-lg font-bold text-gray-800 mb-2">⛽ Update Fuel Status</h3>
-                <p className="text-xs text-gray-500 mb-4">Click anywhere on the map grid canvas to position your report target pin.</p>
+      <form onSubmit={handleSubmit} style={{ backgroundColor: '#0d3326', padding: '16px', borderRadius: '12px', marginBottom: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Update Station Status</h3>
+        
+        <input 
+          type="text" 
+          placeholder="Station Name (e.g. Padma Oil, Dhanmondi)"
+          value={formData.stationName}
+          onChange={(e) => setFormData({ ...formData, stationName: e.target.value })}
+          style={{ padding: '10px', borderRadius: '6px', border: '1px solid #1e5340', backgroundColor: '#062319', color: '#fff' }}
+        />
 
-                {message && <div className="mb-3 text-xs bg-blue-50 p-2 rounded border border-blue-200 text-blue-700">{message}</div>}
+        <input 
+          type="text" 
+          placeholder="Location / Area Name"
+          value={formData.locationName}
+          onChange={(e) => setFormData({ ...formData, locationName: e.target.value })}
+          style={{ padding: '10px', borderRadius: '6px', border: '1px solid #1e5340', backgroundColor: '#062319', color: '#fff' }}
+        />
 
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                        <label className="text-xs font-semibold text-gray-600 block">Station / Brand Name</label>
-                        <input type="text" required placeholder="e.g., Mohakhali Filling Station" value={stationName}
-                            onChange={(e) => setStationName(e.target.value)} className="w-full text-sm mt-1 p-2 border rounded" />
-                    </div>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <select 
+            value={formData.fuelType}
+            onChange={(e) => setFormData({ ...formData, fuelType: e.target.value })}
+            style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #1e5340', backgroundColor: '#062319', color: '#fff' }}
+          >
+            <option value="Octane">Octane</option>
+            <option value="Petrol">Petrol</option>
+            <option value="Diesel">Diesel</option>
+            <option value="CNG">CNG</option>
+          </select>
 
-                    <div>
-                        <label className="text-xs font-semibold text-gray-600 block">Current Status</label>
-                        <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full text-sm mt-1 p-2 border rounded bg-white">
-                            <option value="available">Available / No Queue</option>
-                            <option value="long line">Long Queue Present</option>
-                            <option value="out of fuel">Out of Fuel</option>
-                        </select>
-                    </div>
-
-                    <div className="bg-gray-50 p-2.5 rounded text-xs text-gray-600 border space-y-1">
-                        <span className="font-bold text-gray-700 block">Target Coordinates:</span>
-                        <div>Latitude: <span className="font-mono font-medium">{selectedCoords[0].toFixed(5)}</span></div>
-                        <div>Longitude: <span className="font-mono font-medium">{selectedCoords[1].toFixed(5)}</span></div>
-                    </div>
-
-                    <button type="submit" className="w-full bg-slate-800 hover:bg-slate-900 text-white font-medium text-sm p-2 rounded transition">
-                        Submit Location Update
-                    </button>
-                </form>
-            </div>
-
-            {/* MAP & LISTING LAYOUT ENVIRONMENT */}
-            <div className="lg:col-span-2 space-y-6">
-                <div className="bg-white p-2 rounded-xl shadow-sm border border-gray-200">
-                    <MapContainer center={[23.8103, 90.4125]} zoom={12} scrollWheelZoom={true}>
-                        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' />
-
-                        <MapClickHandler />
-
-                        {/* Interactive Target Submission Pin Drop */}
-                        <Marker position={selectedCoords}>
-                            <Popup>Your selected reporting point.</Popup>
-                        </Marker>
-
-                        {/* Displaying Live Database Reports */}
-                        {stations.map((station) => (
-                            <Marker key={station._id} position={[station.coordinates[1], station.coordinates[0]]}>
-                                <Popup>
-                                    <div className="text-xs space-y-1">
-                                        <strong className="text-sm font-bold text-slate-900 block">{station.stationName}</strong>
-                                        <div className="capitalize font-semibold">Status: {station.status}</div>
-                                        <div className="text-gray-400">By: {station.reportedBy?.username || 'Anonymous'}</div>
-                                    </div>
-                                </Popup>
-                            </Marker>
-                        ))}
-                    </MapContainer>
-                </div>
-
-                {/* TIME RELEVANCY MONITOR TIMELINE CONTAINER */}
-                <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
-                    <h4 className="text-sm font-bold text-gray-800 mb-3 uppercase tracking-wider">Recent Station Feeds</h4>
-                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                        {stations.length === 0 ? (
-                            <p className="text-xs text-gray-500">No active station reports available.</p>
-                        ) : (
-                            stations.map((s) => {
-                                const timeAgo = getTimeAgo(s.createdAt);
-                                return (
-                                    <div key={s._id} className="flex justify-between items-center text-xs p-2.5 bg-gray-50 border rounded-lg">
-                                        <div>
-                                            <span className="font-bold text-gray-900 block">{s.stationName}</span>
-                                            <span className="text-gray-500">Reported by: {s.reportedBy?.username || 'Anonymous'}</span>
-                                        </div>
-                                        <div className="text-right">
-                                            <span className={`inline-block px-2 py-0.5 rounded font-bold uppercase mr-3 ${s.status === 'available' ? 'bg-green-100 text-green-800' :
-                                                s.status === 'long line' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'
-                                                }`}>{s.status}</span>
-                                            <span className={timeAgo.color}>{timeAgo.text}</span>
-                                        </div>
-                                    </div>
-                                );
-                            })
-                        )}
-                    </div>
-                </div>
-            </div>
-
+          <select 
+            value={formData.queueLength}
+            onChange={(e) => setFormData({ ...formData, queueLength: e.target.value })}
+            style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #1e5340', backgroundColor: '#062319', color: '#fff' }}
+          >
+            <option value="Low">Queue: Low</option>
+            <option value="Medium">Queue: Medium</option>
+            <option value="Long">Queue: Long</option>
+          </select>
         </div>
-    );
-};
 
-export default Fuel;
+        <button type="submit" style={{ backgroundColor: '#10b981', color: '#fff', padding: '10px', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
+          Submit Fuel Status
+        </button>
+      </form>
+
+      <h3>Recent Fuel Updates</h3>
+      {loading ? <p>Loading updates...</p> : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {fuelStations.length === 0 ? <p style={{ color: '#94a3b8' }}>No fuel updates found.</p> : (
+            fuelStations.map((item) => (
+              <div key={item._id || item.id} style={{ backgroundColor: '#0d3326', padding: '14px', borderRadius: '8px', borderLeft: '4px solid #10b981' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h4 style={{ margin: 0, fontSize: '1.1rem' }}>{item.stationName || item.name || 'Fuel Station'}</h4>
+                  <span style={{ fontSize: '12px', color: '#a7f3d0' }}>Queue: {item.queueLength || item.status || 'Medium'}</span>
+                </div>
+                <p style={{ margin: '4px 0', fontSize: '0.9rem', color: '#cbd5e1' }}>📍 {item.locationName || item.location || 'General Area'} | Type: {item.fuelType || 'General'}</p>
+                <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8' }}>
+                  Posted by: <strong>{getAuthorName(item)}</strong>
+                </p>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

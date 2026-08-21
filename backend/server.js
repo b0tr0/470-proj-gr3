@@ -3,32 +3,45 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 require('dotenv').config();
 
-// Import Routes
+const authRoutes = require('./routes/authRoutes');
 const reportRoutes = require('./routes/reportRoutes');
-const fuelRoutes = require('./routes/fuelRoutes'); 
+const fuelRoutes = require('./routes/fuelRoutes');
+const authorityRoutes = require('./routes/authorityRoutes');
+const chatbotRoutes = require('./routes/chatbotRoutes');
+const forumRoutes = require('./routes/forumRoutes');
+const friendsRoutes = require('./routes/friendsRoutes');
+const hazardRoutes = require('./routes/hazardRoutes');
+const trendsRoutes = require('./routes/trendsRoutes');
+const userRoutes = require('./routes/userRoutes');
 
 const app = express();
 
-// Middleware
 app.use(express.json());
 app.use(cors());
 
-// Basic Route
-app.get('/', (req, res) => {
-  res.send('Backend Server is running...');
-});
+app.get('/', (req, res) => res.send('Backend running'));
 
-// Mount API Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/reports', reportRoutes);
-app.use('/api/fuel', fuelRoutes); 
-// Database Connection & Server Listen
+app.use('/api/fuel', fuelRoutes);
+app.use('/api/authority', authorityRoutes);
+app.use('/api/chatbot', chatbotRoutes);
+app.use('/api/forum', forumRoutes);
+app.use('/api/friends', friendsRoutes);
+app.use('/api/hazards', hazardRoutes);
+app.use('/api/trends', trendsRoutes);
+app.use('/api/users', userRoutes);
+
 const PORT = process.env.PORT || 5000;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/your_db_name';
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/traffic_alert';
 
 mongoose
   .connect(MONGO_URI)
   .then(() => {
-    console.log('MongoDB Connected Successfully');
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    console.log('✅ MongoDB Connected');
+    app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
   })
-  .catch((err) => console.error('MongoDB connection error:', err));
+  .catch((err) => {
+    console.error('❌ MongoDB error:', err);
+    process.exit(1);
+  });

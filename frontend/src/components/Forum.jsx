@@ -1,148 +1,125 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 
-export function Forum() {
-  const [posts, setPosts] = useState([
-    {
-      id: 1,
-      author: 'Sarah Jenkins',
-      title: 'Road blockage near Downtown Main St.',
-      content: 'Construction crews have blocked the left lane due to water pipe repairs.',
-      votes: 14,
-      userVote: null,
-      comments: [
-        { id: 101, author: 'Mark T.', content: 'Thanks for the heads up!' }
-      ]
+export default function Forum() {
+  const [posts, setPosts] = useState([]);
+  const [newPost, setNewPost] = useState('');
+  const [commentTexts, setCommentTexts] = useState({}); // প্রতিটি পোস্টের আলাদা কমেন্ট টেক্সট
+
+  const token = localStorage.getItem('token');
+
+  
+  const fetchPosts = async () => {
+    try {
+      const res = await axios.get('http://localhost:5000/api/forum');
+      setPosts(res.data || []);
+    } catch (err) {
+      console.error('Error fetching forum posts:', err);
     }
-  ]);
-
-  const [newTitle, setNewTitle] = useState('');
-  const [newContent, setNewContent] = useState('');
-  const [commentText, setCommentText] = useState({});
-
-  const handleVote = (postId, direction) => {
-    setPosts(prev => prev.map(post => {
-      if (post.id !== postId) return post;
-
-      let voteDiff = 0;
-      let nextVote = direction;
-
-      if (post.userVote === direction) {
-        nextVote = null;
-        voteDiff = direction === 'up' ? -1 : 1;
-      } else {
-        const prevValue = post.userVote === 'up' ? 1 : post.userVote === 'down' ? -1 : 0;
-        const newValue = direction === 'up' ? 1 : -1;
-        voteDiff = newValue - prevValue;
-      }
-
-      return { ...post, votes: post.votes + voteDiff, userVote: nextVote };
-    }));
   };
 
-  const handleAddPost = (e) => {
+  useEffect(() => {
+    fetchPosts();
+  }, []);
+
+  
+  const handlePostSubmit = async (e) => {
     e.preventDefault();
-    if (!newTitle.trim() || !newContent.trim()) return;
+    if (!newPost.trim()) return;
 
-    const newPost = {
-      id: Date.now(),
-      author: 'CurrentUser',
-      title: newTitle,
-      content: newContent,
-      votes: 0,
-      userVote: null,
-      comments: []
-    };
-
-    setPosts([newPost, ...posts]);
-    setNewTitle('');
-    setNewContent('');
+    try {
+      await axios.post(
+        'http://localhost:5000/api/forum',
+        { content: newPost },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setNewPost('');
+      fetchPosts();
+    } catch (err) {
+      console.error('Error creating post:', err);
+    }
   };
 
-  const handleAddComment = (postId) => {
-    const text = commentText[postId];
-    if (!text?.trim()) return;
 
-    setPosts(prev => prev.map(post => {
-      if (post.id !== postId) return post;
-      return {
-        ...post,
-        comments: [...post.comments, { id: Date.now(), author: 'CurrentUser', content: text }]
-      };
-    }));
+  const handleCommentSubmit = async (postId) => {
+    const text = commentTexts[postId];
+    if (!text || !text.trim()) return;
 
-    setCommentText({ ...commentText, [postId]: '' });
+    try {
+      await axios.post(
+        `http://localhost:5000/api/forum/${postId}/comment`,
+        { text },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      
+      
+      setCommentTexts({ ...commentTexts, [postId]: '' });
+      fetchPosts();
+    } catch (err) {
+      console.error('Error adding comment:', err);
+    }
   };
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
-      <h2>Community Discussion Forum</h2>
+    <div style={{ maxWidth: '700px', margin: '0 auto', padding: '20px', color: '#fff' }}>
+      <h2>💬 Community Forum</h2>
 
-      <form onSubmit={handleAddPost} style={{ marginBottom: '30px', padding: '15px', border: '1px solid #ddd', borderRadius: '8px' }}>
-        <h3>Create a Post</h3>
-        <input 
-          type="text" 
-          placeholder="Title" 
-          value={newTitle} 
-          onChange={(e) => setNewTitle(e.target.value)}
-          style={{ width: '100%', padding: '8px', marginBottom: '10px' }}
+      {/* Post Form */}
+      <form onSubmit={handlePostSubmit} style={{ marginBottom: '20px' }}>
+        <textarea
+          value={newPost}
+          onChange={(e) => setNewPost(e.target.value)}
+          placeholder="Ask a question or share traffic updates with the community..."
+          style={{ width: '100%', height: '80px', padding: '10px', borderRadius: '8px', backgroundColor: '#062319', border: '1px solid #1e4d3b', color: '#fff' }}
         />
-        <textarea 
-          placeholder="What's happening?" 
-          value={newContent} 
-          onChange={(e) => setNewContent(e.target.value)}
-          style={{ width: '100%', padding: '8px', height: '80px', marginBottom: '10px' }}
-        />
-        <button type="submit" style={{ padding: '8px 16px', background: '#0070f3', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Post</button>
+        <button
+          type="submit"
+          style={{ marginTop: '8px', padding: '10px 20px', backgroundColor: '#3b82f6', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}
+        >
+          Post Discussion
+        </button>
       </form>
 
-      {posts.map(post => (
-        <div key={post.id} style={{ border: '1px solid #ccc', borderRadius: '8px', padding: '15px', marginBottom: '20px' }}>
-          <div style={{ display: 'flex', gap: '15px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <button 
-                onClick={() => handleVote(post.id, 'up')}
-                style={{ color: post.userVote === 'up' ? 'green' : 'black', cursor: 'pointer', border: 'none', background: 'none' }}
-              >
-                ▲
-              </button>
-              <span>{post.votes}</span>
-              <button 
-                onClick={() => handleVote(post.id, 'down')}
-                style={{ color: post.userVote === 'down' ? 'red' : 'black', cursor: 'pointer', border: 'none', background: 'none' }}
-              >
-                ▼
-              </button>
-            </div>
-
-            <div style={{ flex: 1 }}>
-              <h4 style={{ margin: '0 0 5px 0' }}>{post.title}</h4>
-              <small style={{ color: '#666' }}>Posted by {post.author}</small>
-              <p>{post.content}</p>
-
-              <div style={{ marginTop: '15px', background: '#f9f9f9', padding: '10px', borderRadius: '6px' }}>
-                <h5>Comments ({post.comments.length})</h5>
-                {post.comments.map(c => (
-                  <p key={c.id} style={{ fontSize: '14px', margin: '5px 0' }}>
-                    <strong>{c.author}:</strong> {c.content}
-                  </p>
-                ))}
-
-                <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                  <input 
-                    type="text" 
-                    placeholder="Write a comment..." 
-                    value={commentText[post.id] || ''}
-                    onChange={(e) => setCommentText({ ...commentText, [post.id]: e.target.value })}
-                    style={{ flex: 1, padding: '6px' }}
-                  />
-                  <button onClick={() => handleAddComment(post.id)} style={{ padding: '6px 12px' }}>Comment</button>
-                </div>
-              </div>
-            </div>
+      {/* Posts List */}
+      {posts.map((post) => (
+        <div key={post._id} style={{ backgroundColor: '#0d3326', padding: '16px', borderRadius: '8px', marginBottom: '16px', border: '1px solid #1e5340' }}>
+          
+          <div style={{ fontWeight: 'bold', color: '#38bdf8', marginBottom: '4px' }}>
+            👤 {post.user?.username || post.author || 'Member'}
           </div>
+          <p style={{ margin: '0 0 12px 0' }}>{post.content || post.text}</p>
+
+          <hr style={{ borderColor: '#1e5340', margin: '10px 0' }} />
+
+          {/* 💬 */}
+          <div style={{ marginLeft: '10px', marginBottom: '10px' }}>
+            {post.comments && post.comments.map((comment, index) => (
+              <div key={index} style={{ backgroundColor: '#062319', padding: '8px 12px', borderRadius: '6px', marginBottom: '6px', fontSize: '13px' }}>
+                <strong style={{ color: '#34d399' }}>{comment.username || 'User'}: </strong>
+                <span>{comment.text}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* 💬  */}
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <input
+              type="text"
+              placeholder="Write a comment..."
+              value={commentTexts[post._id] || ''}
+              onChange={(e) => setCommentTexts({ ...commentTexts, [post._id]: e.target.value })}
+              style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #1e4d3b', backgroundColor: '#062319', color: '#fff' }}
+            />
+            <button
+              onClick={() => handleCommentSubmit(post._id)}
+              style={{ padding: '8px 14px', backgroundColor: '#10b981', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
+            >
+              Reply
+            </button>
+          </div>
+
         </div>
       ))}
     </div>
   );
 }
-export default Forum;

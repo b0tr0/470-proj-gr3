@@ -1,27 +1,19 @@
 const mongoose = require('mongoose');
 
 const fuelStatusSchema = new mongoose.Schema({
-  stationName: { 
-    type: String, 
-    required: true 
-  },
+  stationName: { type: String, required: true },
+  locationName: { type: String, required: true }, // Added to store area/location name
+  fuelType: { type: String }, // Added to store fuel category
+  queueLength: { type: String }, // Added to sync queue length status
   status: { 
     type: String, 
-    // Updated enum values to match front-end dropdown options
-    enum: ['Available', 'Long Queue Present', 'Out of Fuel', 'available', 'long line', 'out of fuel'], 
-    required: true 
+    enum: ['available', 'long line', 'out of fuel'], 
+    default: 'available' 
   },
-  reportedBy: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'User', 
-    required: false, // Set to false to support anonymous submissions
-    default: null 
-  },
-  // Simple coordinates array [longitude, latitude]
-  coordinates: {
-    type: [Number], 
-    required: true
-  }
-}, { timestamps: true });
+  coordinates: { type: [Number], index: '2dsphere' }, // [lng, lat]
+  reportedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  username: { type: String, default: 'Registered Member' }, // Direct fallback username storage
+  createdAt: { type: Date, default: Date.now }
+});
 
 module.exports = mongoose.model('FuelStatus', fuelStatusSchema);

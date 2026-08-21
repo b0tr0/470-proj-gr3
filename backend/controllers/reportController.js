@@ -2,13 +2,13 @@ const Report = require('../models/Report');
 
 // @desc    Create a new report (Supports both Logged-in & Anonymous)
 // @route   POST /api/reports
-// @access  Public
+// @access  Public/Private
 const createReport = async (req, res) => {
   try {
-    const { title, description, category, severity, location, imageUrl, expiresAt } = req.body;
+    const { title, description, category, severity, location, imageUrl, expiresAt, isAnonymous } = req.body;
 
-    // Assign user ID if authenticated, otherwise set to null for anonymous users
     const userId = req.user ? req.user._id : null;
+    const anonymousPost = typeof isAnonymous !== 'undefined' ? isAnonymous : !userId;
 
     const report = await Report.create({
       title,
@@ -18,7 +18,7 @@ const createReport = async (req, res) => {
       location,
       imageUrl,
       postedBy: userId,
-      isAnonymous: !userId,
+      isAnonymous: anonymousPost,
       ...(expiresAt && { expiresAt }),
     });
 
@@ -28,16 +28,15 @@ const createReport = async (req, res) => {
   }
 };
 
-// @desc    Get all active and non-expired reports
+// @desc    Get all active non-deleted reports
 // @route   GET /api/reports
 // @access  Public
 const getReports = async (req, res) => {
   try {
     const reports = await Report.find({ 
-      isDeleted: false,
-      expiresAt: { $gt: new Date() } // Filter out expired reports automatically
+      $or: [{ isDeleted: false }, { isDeleted: { $exists: false } }]
     })
-      .populate('postedBy', 'name email')
+      .populate('postedBy', 'username email role')
       .sort({ createdAt: -1 });
 
     res.status(200).json(reports);
@@ -80,10 +79,12 @@ const commentReport = async (req, res) => {
       return res.status(404).json({ message: 'Report not found' });
     }
 
+    const authorName = req.user ? (req.user.username || req.user.name) : 'Anonymous';
+
     const comment = {
       text,
       user: req.user ? req.user._id : null,
-      username: req.user ? req.user.name : 'Anonymous',
+      username: authorName,
       createdAt: new Date(),
     };
 
@@ -138,23 +139,40 @@ const verifyReport = async (req, res) => {
   }
 };
 
-// @desc    Delete a report (Soft Delete)
-// @route   DELETE /api/reports/:id
-// @access  Private
-const deleteReport = async (req, res) => {
+// 🟢 NEW: Resolve a report
+// @desc    Resolve a report
+// @route   PUT or PATCH /api/reports/:id/resolve
+// @access  Private/Authority
+const resolveReport = async (req, res) => {
   try {
+    const { status } = req.body;
     const report = await Report.findById(req.params.id);
 
     if (!report) {
       return res.status(404).json({ message: 'Report not found' });
     }
 
-    report.isDeleted = true;
-    report.deletedBy = req.user ? req.user._id : null;
-    report.deletedAt = new Date();
+    report.authorityStatus = status || 'resolved';
     await report.save();
 
-    res.status(200).json({ id: req.params.id, message: 'Report removed' });
+    res.status(200).json(report);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+// @desc    Delete a report (Hard Delete to completely remove from Database)
+// @route   DELETE /api/reports/:id
+// @access  Private
+const deleteReport = async (req, res) => {
+  try {
+    const report = await Report.findByIdAndDelete(req.params.id);
+
+    if (!report) {
+      return res.status(404).json({ message: 'Report not found' });
+    }
+
+    res.status(200).json({ id: req.params.id, message: 'Report deleted permanently' });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -167,5 +185,6 @@ module.exports = {
   commentReport,
   flagReport,
   verifyReport,
+  resolveReport,
   deleteReport,
 };
