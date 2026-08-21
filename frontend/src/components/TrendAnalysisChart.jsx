@@ -1,63 +1,103 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from 'recharts';
 
-const mockData = [
-  { month: 'Jan', accidents: 45, blockades: 12 },
-  { month: 'Feb', accidents: 52, blockades: 19 },
-  { month: 'Mar', accidents: 38, blockades: 8 },
-  { month: 'Apr', accidents: 65, blockades: 25 },
-  { month: 'May', accidents: 41, blockades: 15 },
-  { month: 'Jun', accidents: 58, blockades: 22 },
-];
+export default function TrendAnalysis() {
+  const [hazards, setHazards] = useState([]);
+  const [selectedYear, setSelectedYear] = useState('2026');
+  const [loading, setLoading] = useState(true);
 
-export function TrendAnalysisChart() {
-  const [timeframe, setTimeframe] = useState('2026');
+  useEffect(() => {
+    fetch('http://localhost:5000/api/hazards')
+      .then((res) => res.json())
+      .then((data) => {
+        let parsed = [];
+        if (Array.isArray(data)) parsed = data;
+        else if (data.hazards) parsed = data.hazards;
+        else if (data.data) parsed = data.data;
+        setHazards(parsed);
+      })
+      .catch((err) => console.error('Error fetching hazards for chart:', err))
+      .finally(() => setLoading(false));
+  }, []);
 
-  const totalAccidents = mockData.reduce((sum, d) => sum + d.accidents, 0);
-  const totalBlockades = mockData.reduce((sum, d) => sum + d.blockades, 0);
+  const yearFilteredHazards = hazards.filter((item) => {
+    if (!item.createdAt) return true; 
+    const year = new Date(item.createdAt).getFullYear().toString();
+    return year === selectedYear;
+  });
+
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  
+  const chartData = months.map((month, index) => {
+    const monthlyData = yearFilteredHazards.filter((item) => {
+      if (!item.createdAt) return false;
+      return new Date(item.createdAt).getMonth() === index;
+    });
+
+    // Corrected filtering – change these labels as you prefer
+    const roadDamage = monthlyData.filter(
+      (h) => (h.type || '').toLowerCase() === 'pothole' || (h.type || '').toLowerCase() === 'poor_road'
+    ).length;
+
+    const otherHazards = monthlyData.filter(
+      (h) => (h.type || '').toLowerCase() === 'checkpoint' || (h.type || '').toLowerCase() === 'extortion'
+    ).length;
+
+    return {
+      month,
+      'Road Damage': roadDamage,
+      'Other Hazards': otherHazards,
+    };
+  });
+
+  const totalRoadDamage = chartData.reduce((acc, curr) => acc + curr['Road Damage'], 0);
+  const totalOther = chartData.reduce((acc, curr) => acc + curr['Other Hazards'], 0);
+
+  if (loading) {
+    return <div style={{ color: '#fff', textAlign: 'center', padding: '40px' }}>Loading Trend Analysis...</div>;
+  }
 
   return (
-    <div style={{ padding: '20px', border: '1px solid #e0e0e0', borderRadius: '8px', maxWidth: '700px', margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <h3>Incident Trend Analysis</h3>
-        <select value={timeframe} onChange={(e) => setTimeframe(e.target.value)} style={{ padding: '5px 10px' }}>
-          <option value="2026">Year 2026</option>
-          <option value="2025">Year 2025</option>
+    <div style={{ maxWidth: '900px', margin: '30px auto', padding: '24px', backgroundColor: '#0b3828', border: '1px solid #10b981', borderRadius: '12px', color: '#fff' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+        <h2 style={{ fontSize: '22px', fontWeight: 'bold', color: '#6ee7b7' }}>
+          📈 Incident Trend Analysis
+        </h2>
+        <select 
+          value={selectedYear} 
+          onChange={(e) => setSelectedYear(e.target.value)}
+          style={{ padding: '8px 16px', borderRadius: '6px', backgroundColor: '#062319', color: '#fff', border: '1px solid #10b981', fontWeight: 'bold', cursor: 'pointer' }}
+        >
+          <option value="2026">2026</option>
+          <option value="2025">2025</option>
+          <option value="2024">2024</option>
         </select>
       </div>
 
-      <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
-        <div style={{ flex: 1, padding: '15px', background: '#ffebee', borderRadius: '6px' }}>
-          <small style={{ color: '#c62828' }}>Total Accidents ({timeframe})</small>
-          <h2>{totalAccidents}</h2>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '30px' }}>
+        <div style={{ backgroundColor: '#ffe4e6', borderLeft: '6px solid #e11d48', padding: '16px', borderRadius: '8px', color: '#881337' }}>
+          <span style={{ fontSize: '14px', fontWeight: 'bold' }}>Road Damage ({selectedYear})</span>
+          <h3 style={{ fontSize: '28px', fontWeight: 'bold', marginTop: '4px' }}>{totalRoadDamage}</h3>
         </div>
-        <div style={{ flex: 1, padding: '15px', background: '#e3f2fd', borderRadius: '6px' }}>
-          <small style={{ color: '#1565c0' }}>Total Blockades ({timeframe})</small>
-          <h2>{totalBlockades}</h2>
+        <div style={{ backgroundColor: '#e0f2fe', borderLeft: '6px solid #0284c7', padding: '16px', borderRadius: '8px', color: '#0c4a6e' }}>
+          <span style={{ fontSize: '14px', fontWeight: 'bold' }}>Checkpoints / Extortion ({selectedYear})</span>
+          <h3 style={{ fontSize: '28px', fontWeight: 'bold', marginTop: '4px' }}>{totalOther}</h3>
         </div>
       </div>
 
-      <div style={{ width: '100%', height: '220px', position: 'relative' }}>
-        <svg viewBox="0 0 600 200" style={{ width: '100%', height: '100%' }}>
-          <line x1="40" y1="20" x2="580" y2="20" stroke="#eee" />
-          <line x1="40" y1="90" x2="580" y2="90" stroke="#eee" />
-          <line x1="40" y1="160" x2="580" y2="160" stroke="#eee" />
-
-          <polyline fill="none" stroke="#c62828" strokeWidth="3" points="50,110 140,96 230,124 320,70 410,118 500,84" />
-          <polyline fill="none" stroke="#1565c0" strokeWidth="3" points="50,176 140,162 230,184 320,150 410,170 500,156" />
-
-          {mockData.map((d, index) => (
-            <text key={d.month} x={50 + index * 90} y="190" fontSize="12" fill="#666" textAnchor="middle">
-              {d.month}
-            </text>
-          ))}
-        </svg>
-      </div>
-
-      <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', marginTop: '10px' }}>
-        <span style={{ color: '#c62828', fontWeight: 'bold' }}>● Accidents</span>
-        <span style={{ color: '#1565c0', fontWeight: 'bold' }}>● Blockades</span>
+      <div style={{ width: '100%', height: '320px', backgroundColor: '#062319', padding: '16px 8px 8px 8px', borderRadius: '8px', border: '1px solid #064e3b' }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#0b3828" />
+            <XAxis dataKey="month" stroke="#9ca3af" />
+            <YAxis stroke="#9ca3af" allowDecimals={false} />
+            <Tooltip contentStyle={{ backgroundColor: '#0b3828', borderColor: '#10b981', color: '#fff' }} />
+            <Legend wrapperStyle={{ paddingTop: '10px' }} />
+            <Bar dataKey="Road Damage" fill="#ef4444" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="Other Hazards" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );
 }
-export default TrendAnalysisChart;

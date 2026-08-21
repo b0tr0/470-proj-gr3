@@ -1,34 +1,54 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import API from '../api';
+
+
 
 export function FriendList() {
-  const [friends, setFriends] = useState([
-    { id: 1, name: 'Alice Smith', status: 'Accepted' },
-    { id: 2, name: 'Bob Johnson', status: 'Pending' }
-  ]);
+  const [friends, setFriends] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const handleAddFriend = () => {
+  useEffect(() => {
+    fetchFriends();
+  }, []);
+
+  const fetchFriends = async () => {
+    try {
+      const { data } = await API.get('/friends');
+      setFriends(data);
+    } catch (err) {
+      console.error('Failed to load friends:', err);
+    }
+  };
+
+  const handleAddFriend = async () => {
     if (!searchQuery.trim()) return;
-    setFriends([...friends, { id: Date.now(), name: searchQuery, status: 'Pending' }]);
-    setSearchQuery('');
+    try {
+      await API.post('/friends/add', { targetUsername: searchQuery });
+      fetchFriends();
+      setSearchQuery('');
+    } catch (err) {
+      alert(err.response?.data?.message || 'Error adding friend');
+    }
   };
 
-  const handleAccept = (id) => {
-    setFriends(friends.map(f => f.id === id ? { ...f, status: 'Accepted' } : f));
-  };
-
-  const handleRemove = (id) => {
-    setFriends(friends.filter(f => f.id !== id));
+  const handleRemove = async (friendId) => {
+    if (!window.confirm('Remove this friend?')) return;
+    try {
+      await API.delete(`/friends/${friendId}`);
+      setFriends(friends.filter(f => f._id !== friendId));
+    } catch (err) {
+      alert('Failed to remove friend');
+    }
   };
 
   return (
     <div style={{ maxWidth: '500px', margin: '0 auto', padding: '20px' }}>
       <h3>Friends List</h3>
-      
+      <LocationShare />
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-        <input 
-          type="text" 
-          placeholder="Search user by name..." 
+        <input
+          type="text"
+          placeholder="Search user by username..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           style={{ flex: 1, padding: '8px' }}
@@ -38,18 +58,12 @@ export function FriendList() {
 
       <ul style={{ listStyle: 'none', padding: 0 }}>
         {friends.map(friend => (
-          <li key={friend.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', borderBottom: '1px solid #eee' }}>
+          <li key={friend._id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', borderBottom: '1px solid #eee' }}>
             <div>
-              <strong>{friend.name}</strong>
-              <span style={{ fontSize: '12px', marginLeft: '10px', color: friend.status === 'Accepted' ? 'green' : 'orange' }}>
-                ({friend.status})
-              </span>
+              <strong>{friend.username}</strong>
             </div>
             <div>
-              {friend.status === 'Pending' && (
-                <button onClick={() => handleAccept(friend.id)} style={{ marginRight: '5px', padding: '4px 8px', cursor: 'pointer' }}>Accept</button>
-              )}
-              <button onClick={() => handleRemove(friend.id)} style={{ padding: '4px 8px', color: 'red', cursor: 'pointer' }}>Remove</button>
+              <button onClick={() => handleRemove(friend._id)} style={{ padding: '4px 8px', color: 'red', cursor: 'pointer' }}>Remove</button>
             </div>
           </li>
         ))}

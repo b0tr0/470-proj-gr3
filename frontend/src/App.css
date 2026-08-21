@@ -49,3 +49,32 @@ button {
 button:hover {
   background-color: #388e3c;
 }
+
+/* Emergency Alert Card Styling */
+.emergency-card, 
+.alert-card {
+  background-color: #fef3c7; 
+}
+
+
+.emergency-card h1, .alert-card h1,
+.emergency-card h2, .alert-card h2,
+.emergency-card h3, .alert-card h3,
+.emergency-card p,  .alert-card p,
+.emergency-card span, .alert-card span {
+  color: #78350f !important; 
+}
+
+/* Comment box colour fix */
+.forum-container input, 
+.forum-container textarea, 
+input[placeholder*="comment"] {
+  color: #111827 !important;
+  background-color: #ffffff !important;
+}
+
+/* Comment text colour fix */
+.forum-container p, 
+.forum-container span {
+  color: #111827 !important;
+}

@@ -7,12 +7,17 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   role: { 
     type: String, 
-    enum: ['general', 'moderator', 'authority'], 
+    enum: ['general', 'moderator', 'authority', 'community moderator'], 
     default: 'general' 
-  }
+  },
+  friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  
+  
+  latitude: { type: Number },
+  longitude: { type: Number },
+  lastLocationUpdate: { type: Date }
 }, { timestamps: true });
 
-// Hash password before saving
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
   const salt = await bcrypt.genSalt(10);

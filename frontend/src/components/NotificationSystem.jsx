@@ -1,13 +1,9 @@
 import { useState, useEffect } from 'react';
-
-const incomingReports = [
-  { id: 1, title: 'Severe Collision', lat: 51.507, lng: -0.09, votes: 20 },
-  { id: 2, title: 'Minor Pothole', lat: 51.515, lng: -0.10, votes: 3 },
-];
+import API from '../api';
 
 const THRESHOLD = 15;
 
-export function NotificationSystem() {
+export default function NotificationSystem() {
   const [notifications, setNotifications] = useState([]);
   const [userLocation, setUserLocation] = useState(null);
 
@@ -15,37 +11,62 @@ export function NotificationSystem() {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => setUserLocation({ lat: 51.505, lng: -0.09 })
+        () => setUserLocation({ lat: 23.84638, lng: 90.42711 }) // Fallback (Dhaka)
       );
+    } else {
+      setUserLocation({ lat: 23.84638, lng: 90.42711 });
     }
   }, []);
 
   useEffect(() => {
     if (!userLocation) return;
 
-    const highPriorityAlerts = incomingReports.filter(report => {
-      const isHighUpvoted = report.votes >= THRESHOLD;
-      const isNearby = Math.abs(report.lat - userLocation.lat) < 0.05 && Math.abs(report.lng - userLocation.lng) < 0.05;
-      return isHighUpvoted && isNearby;
-    });
+    const fetchReports = async () => {
+      try {
+        const res = await API.get('/reports');
+        const data = Array.isArray(res.data) ? res.data : res.data?.reports || [];
 
-    setNotifications(highPriorityAlerts);
+        const highPriority = data.filter(report => {
+          const upvotes = report.upvotes?.length || 0;
+          if (upvotes < THRESHOLD) return false;
+          if (report.location) {
+            const latDiff = Math.abs(report.location.lat - userLocation.lat);
+            const lngDiff = Math.abs(report.location.lng - userLocation.lng);
+            return latDiff < 0.05 && lngDiff < 0.05;
+          }
+          return false;
+        });
+        setNotifications(highPriority);
+      } catch (err) {
+        console.error('Notification fetch failed:', err);
+      }
+    };
+
+    fetchReports();
   }, [userLocation]);
 
   return (
-    <div style={{ padding: '15px', backgroundColor: '#fff8e1', border: '1px solid #ffe082', borderRadius: '8px', maxWidth: '400px' }}>
-      <h4>🔔 Emergency Alerts ({notifications.length})</h4>
-      {notifications.length === 0 ? (
-        <p style={{ fontSize: '14px', color: '#666' }}>No high-priority alerts nearby.</p>
-      ) : (
-        notifications.map(n => (
-          <div key={n.id} style={{ borderLeft: '4px solid #ff9800', paddingLeft: '8px', margin: '8px 0' }}>
-            <strong>{n.title}</strong>
-            <p style={{ margin: 0, fontSize: '12px' }}>{n.votes} user confirmations — Near your area</p>
-          </div>
-        ))
-      )}
+    <div style={{ padding: '0 40px', marginTop: '16px', position: 'relative', zIndex: 10 }}>
+      <div style={{ padding: '12px 16px', backgroundColor: '#fff8e1', border: '1px solid #ffe082', borderRadius: '8px', maxWidth: '350px', color: '#111827' }}>
+        <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 'bold' }}>
+          🔔 Emergency Alerts ({notifications.length})
+        </h4>
+        
+        {notifications.length === 0 ? (
+          <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#666' }}>
+            No high-priority alerts nearby.
+          </p>
+        ) : (
+          notifications.map(n => (
+            <div key={n._id} style={{ borderLeft: '4px solid #ff9800', paddingLeft: '8px', marginTop: '8px' }}>
+              <strong style={{ fontSize: '13px' }}>{n.title}</strong>
+              <p style={{ margin: 0, fontSize: '11px', color: '#4b5563' }}>
+                {n.upvotes?.length || 0} user confirmations — Near your area
+              </p>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 }
-export default NotificationSystem;

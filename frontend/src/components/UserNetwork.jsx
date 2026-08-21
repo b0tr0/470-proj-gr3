@@ -1,21 +1,74 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 
 const UserNetwork = () => {
-  const [friends, setFriends] = useState([
-    { name: 'Sarah Jenkins', status: 'Commuting' },
-    { name: 'Dave Miller', status: 'Idle' },
-    { name: 'Alex Rivera', status: 'Driving' }
-  ]);
+  
+  const [friends, setFriends] = useState(() => {
+    const savedFriends = localStorage.getItem('user_network_friends');
+    if (savedFriends) {
+      try {
+        return JSON.parse(savedFriends);
+      } catch (e) {
+        console.error('Error parsing saved friends', e);
+      }
+    }
+    
+    return [
+      { name: 'Sarah Jenkins', status: 'Commuting' },
+      { name: 'Dave Miller', status: 'Idle' },
+      { name: 'Alex Rivera', status: 'Driving' },
+    ];
+  });
+
   const [friendName, setFriendName] = useState('');
   const [friendStatus, setFriendStatus] = useState('Commuting');
+
+  // 📍 Location Sharing States
+  const [locationSharing, setLocationSharing] = useState(false);
+  const [locStatus, setLocStatus] = useState('');
+
+  useEffect(() => {
+    localStorage.setItem('user_network_friends', JSON.stringify(friends));
+  }, [friends]);
 
   const handleAddFriend = (e) => {
     e.preventDefault();
     if (friendName.trim() !== '') {
-      setFriends([...friends, { name: friendName, status: friendStatus }]);
+      const updatedFriends = [...friends, { name: friendName, status: friendStatus }];
+      setFriends(updatedFriends);
       setFriendName('');
       setFriendStatus('Commuting');
     }
+  };
+
+  // 📍 Share Location Handler
+  const handleShareLocation = () => {
+    if (!navigator.geolocation) {
+      setLocStatus('Geolocation is not supported by your browser');
+      return;
+    }
+
+    setLocStatus('Getting location...');
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        try {
+          await axios.post('http://localhost:5000/api/users/share-location', {
+            latitude,
+            longitude
+          });
+          setLocationSharing(true);
+          setLocStatus('Location shared successfully!');
+        } catch (err) {
+          console.error(err);
+          setLocStatus('Failed to send location to server');
+        }
+      },
+      (error) => {
+        setLocStatus(`Error: ${error.message}`);
+      }
+    );
   };
 
   return (
@@ -25,7 +78,7 @@ const UserNetwork = () => {
       </h1>
 
       {/* Main Container - Side by Side */}
-      <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: '20px' }}>
+      <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: '20px', flexWrap: 'wrap' }}>
 
         {/* 1. User Friend List Card */}
         <div style={{ width: '250px', backgroundColor: '#ffffff', padding: '16px', borderRadius: '16px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}>
@@ -124,7 +177,42 @@ const UserNetwork = () => {
           </div>
         </div>
 
-        {/* 2. Priority Notifications Card */}
+        {/* 2. Live Location Card */}
+        <div style={{ width: '220px', backgroundColor: '#ffffff', padding: '16px', borderRadius: '16px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+            <span style={{ fontSize: '16px' }}>📍</span>
+            <h2 style={{ margin: 0, fontSize: '14px', fontWeight: 'bold', color: '#111827' }}>Live Location</h2>
+          </div>
+
+          <p style={{ fontSize: '11px', color: '#64748b', margin: '0 0 12px 0' }}>
+            Share your current location with friends on the network.
+          </p>
+
+          <button
+            onClick={handleShareLocation}
+            style={{
+              width: '100%',
+              padding: '8px',
+              fontSize: '12px',
+              fontWeight: '600',
+              color: '#ffffff',
+              backgroundColor: locationSharing ? '#10b981' : '#0284c7',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer'
+            }}
+          >
+            {locationSharing ? '✓ Location Active' : 'Share Location'}
+          </button>
+
+          {locStatus && (
+            <p style={{ fontSize: '10px', marginTop: '8px', color: locationSharing ? '#059669' : '#dc2626' }}>
+              {locStatus}
+            </p>
+          )}
+        </div>
+
+        {/* 3. Priority Notifications Card */}
         <div style={{ width: '240px', backgroundColor: '#ffffff', padding: '16px', borderRadius: '16px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
             <span style={{ fontSize: '16px' }}>🔔</span>

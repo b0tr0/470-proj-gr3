@@ -16,13 +16,23 @@ exports.updateReportStatus = async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
 
+    if (!id || id === 'undefined') {
+      return res.status(400).json({ message: 'Invalid report ID' });
+    }
+
     const updatedReport = await Report.findByIdAndUpdate(
       id,
       { verificationStatus: status },
       { new: true }
     );
+
+    if (!updatedReport) {
+      return res.status(404).json({ message: 'Report not found in database' });
+    }
+
     res.json(updatedReport);
   } catch (err) {
+    console.error('Update Error:', err.message);
     res.status(400).json({ message: 'Error updating report status', error: err.message });
   }
 };

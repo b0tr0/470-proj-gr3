@@ -1,194 +1,316 @@
 import React, { useState } from 'react';
+
 import { useNavigate } from 'react-router-dom';
 
-const Auth = () => {
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+import API from '../api';
+
+
+
+export default function Auth() {
+
+  const [isLogin, setIsLogin] = useState(true);
+
+  const [loading, setLoading] = useState(false);
+
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    // Simulate Login
-    const userData = { email, name: email.split('@')[0] || 'User' };
-    localStorage.setItem('userInfo', JSON.stringify(userData));
-    navigate('/feed');
+
+
+  const [formData, setFormData] = useState({
+
+    username: '',
+
+    email: '',
+
+    password: '',
+
+    role: 'user'
+
+  });
+
+
+
+  const handleChange = (e) => {
+
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+
   };
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const endpoint = isLogin ? '/auth/login' : '/auth/register';
+      const payload = isLogin
+        ? { email: formData.email, password: formData.password, role: formData.role }
+        : formData;
+
+      const { data } = await API.post(endpoint, payload);
+
+      if (isLogin) {
+        const token = data.token || data.accessToken;
+
+        const userToStore = {
+          ...(data.user || {}),
+          email: data.user?.email || formData.email,
+          username: data.user?.username || data.user?.name || formData.username,
+          role: data.user?.role || data.user?.userType || formData.role
+        };
+
+        localStorage.setItem('token', token);
+        localStorage.setItem('userInfo', JSON.stringify(userToStore));
+
+        alert('Login successful!');
+
+        const userRole = (userToStore.role || '').toLowerCase();
+        if (
+          userRole === 'authority' || 
+          userRole === 'admin' || 
+          userRole === 'moderator' || 
+          userRole === 'community moderator'
+        ) {
+          navigate('/authority-dashboard'); 
+        } else {
+          navigate('/feed');
+        }
+      } else {
+        alert('Registration successful! Please login now.');
+        setIsLogin(true);
+      }
+    } catch (err) {
+      console.error('Authentication error:', err);
+      alert(err.response?.data?.message || 'Authentication failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+
+
+  
+
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: '#0a2e1d', // Dark Green
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '20px',
-      fontFamily: 'sans-serif'
-    }}>
-      {/* Header Logo & Title */}
-      <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-        <h1 style={{ 
-          fontSize: '2.5rem', 
-          fontWeight: 'bold', 
-          color: '#ffffff', 
-          margin: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '4px'
-        }}>
-          Traffic <span style={{ color: '#ef4444' }}>Alert •</span>
-        </h1>
-        <p style={{ color: '#94a3b8', marginTop: '8px', fontSize: '0.95rem' }}>
-          Real-time updates for your daily commute
-        </p>
+
+    <div style={{ maxWidth: '420px', margin: '50px auto', padding: '24px', backgroundColor: '#0d3326', borderRadius: '12px', color: '#fff', border: '1px solid #1e5340', position: 'relative' }}>
+
+     
+
+      {/* System Active Status Marker */}
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '16px' }}>
+
+        <span style={{
+
+          width: '10px',
+
+          height: '10px',
+
+          backgroundColor: '#ef4444',
+
+          borderRadius: '50%',
+
+          display: 'inline-block',
+
+          boxShadow: '0 0 8px #ef4444'
+
+        }}></span>
+
+        <span style={{ fontSize: '12px', color: '#fca5a5', fontWeight: 'bold', letterSpacing: '0.5px' }}>
+
+          SYSTEM ACTIVE
+
+        </span>
+
       </div>
 
-      {/* Main White Auth Box */}
-      <div style={{
-        backgroundColor: '#ffffff',
-        width: '100%',
-        maxWidth: '420px',
-        borderRadius: '16px',
-        padding: '36px 32px',
-        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)',
-      }}>
-        <h2 style={{ 
-          fontSize: '1.5rem', 
-          fontWeight: '700', 
-          color: '#0f172a', 
-          margin: '0 0 6px 0' 
-        }}>
-          {isSignUp ? 'Create an account' : 'Welcome back'}
-        </h2>
-        <p style={{ 
-          color: '#64748b', 
-          fontSize: '0.875rem', 
-          margin: '0 0 24px 0' 
-        }}>
-          {isSignUp ? 'Enter your details to sign up' : 'Please enter your details to sign in'}
-        </p>
 
-        <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '18px' }}>
-            <label style={{ 
-              display: 'block', 
-              fontSize: '0.85rem', 
-              fontWeight: '600', 
-              color: '#334155', 
-              marginBottom: '6px' 
-            }}>
-              Email Address
-            </label>
-            <input
-              type="email"
-              required
-              placeholder="name@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '12px 14px',
-                borderRadius: '8px',
-                border: '1px solid #cbd5e1',
-                backgroundColor: '#ffffff',
-                color: '#0f172a',
-                fontSize: '0.95rem',
-                outline: 'none',
-                boxSizing: 'border-box'
-              }}
-            />
-          </div>
 
-          <div style={{ marginBottom: '24px' }}>
-            <label style={{ 
-              display: 'block', 
-              fontSize: '0.85rem', 
-              fontWeight: '600', 
-              color: '#334155', 
-              marginBottom: '6px' 
-            }}>
-              Password
-            </label>
-            <input
-              type="password"
-              required
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '12px 14px',
-                borderRadius: '8px',
-                border: '1px solid #cbd5e1',
-                backgroundColor: '#ffffff',
-                color: '#0f172a',
-                fontSize: '0.95rem',
-                outline: 'none',
-                boxSizing: 'border-box'
-              }}
-            />
-          </div>
+      <h2 style={{ textAlign: 'center', marginBottom: '20px', marginTop: 0 }}>
 
-          <button
-            type="submit"
-            style={{
-              width: '100%',
-              backgroundColor: '#0a3d24', // Dark green button like image 1
-              color: '#ffffff',
-              padding: '12px',
-              borderRadius: '8px',
-              fontWeight: '600',
-              fontSize: '1rem',
-              border: 'none',
-              cursor: 'pointer',
-              transition: 'background-color 0.2s'
-            }}
+        {isLogin ? '🔑 Account Login' : '📝 Create Account'}
+
+      </h2>
+
+
+
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+
+       
+
+        {/* User Role Selection */}
+
+        <div>
+
+          <label style={{ fontSize: '13px', color: '#a7f3d0' }}>
+
+            User Type <span style={{ color: '#ef4444' }}>●</span>
+
+          </label>
+
+          <select
+
+            name="role"
+
+            value={formData.role}
+
+            onChange={handleChange}
+
+            style={{ width: '100%', padding: '10px', borderRadius: '6px', backgroundColor: '#062319', color: '#fff', border: '1px solid #1e5340', marginTop: '4px' }}
+
           >
-            {isSignUp ? 'Sign Up' : 'Sign In'}
-          </button>
-        </form>
 
-        {/* Bottom Switcher */}
-        <div style={{ 
-          marginTop: '24px', 
-          textAlign: 'center', 
-          fontSize: '0.875rem', 
-          color: '#64748b',
-          borderTop: '1px solid #f1f5f9',
-          paddingTop: '16px'
-        }}>
-          {isSignUp ? (
-            <p style={{ margin: 0 }}>
-              Already have an account?{' '}
-              <span
-                onClick={() => setIsSignUp(false)}
-                style={{ color: '#ef4444', fontWeight: '600', cursor: 'pointer' }}
-              >
-                Sign in
-              </span>
-            </p>
-          ) : (
-            <p style={{ margin: 0 }}>
-              New to TrafficAlert?{' '}
-              <span
-                onClick={() => setIsSignUp(true)}
-                style={{ color: '#ef4444', fontWeight: '600', cursor: 'pointer' }}
-              >
-                Sign up now
-              </span>
-            </p>
-          )}
+            <option value="user"> General User</option>
+
+            <option value="moderator"> Community Moderator</option>
+
+            <option value="authority">🛡️ Authority</option>
+
+          </select>
+
         </div>
+
+
+
+        {!isLogin && (
+
+          <div>
+
+            <label style={{ fontSize: '13px', color: '#a7f3d0' }}>
+
+              Username <span style={{ color: '#ef4444' }}>●</span>
+
+            </label>
+
+            <input
+
+              type="text"
+
+              name="username"
+
+              required
+
+              placeholder="Enter username"
+
+              value={formData.username}
+
+              onChange={handleChange}
+
+              style={{ width: '100%', padding: '10px', borderRadius: '6px', backgroundColor: '#062319', color: '#fff', border: '1px solid #1e5340', marginTop: '4px' }}
+
+            />
+
+          </div>
+
+        )}
+
+
+
+        <div>
+
+          <label style={{ fontSize: '13px', color: '#a7f3d0' }}>
+
+            Email <span style={{ color: '#ef4444' }}>●</span>
+
+          </label>
+
+          <input
+
+            type="email"
+
+            name="email"
+
+            required
+
+            placeholder="Enter email"
+
+            value={formData.email}
+
+            onChange={handleChange}
+
+            style={{ width: '100%', padding: '10px', borderRadius: '6px', backgroundColor: '#062319', color: '#fff', border: '1px solid #1e5340', marginTop: '4px' }}
+
+          />
+
+        </div>
+
+
+
+        <div>
+
+          <label style={{ fontSize: '13px', color: '#a7f3d0' }}>
+
+            Password <span style={{ color: '#ef4444' }}>●</span>
+
+          </label>
+
+          <input
+
+            type="password"
+
+            name="password"
+
+            required
+
+            placeholder="Enter password"
+
+            value={formData.password}
+
+            onChange={handleChange}
+
+            style={{ width: '100%', padding: '10px', borderRadius: '6px', backgroundColor: '#062319', color: '#fff', border: '1px solid #1e5340', marginTop: '4px' }}
+
+          />
+
+        </div>
+
+
+
+        <button
+
+          type="submit"
+
+          disabled={loading}
+
+          style={{ padding: '12px', backgroundColor: '#2563eb', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', marginTop: '8px' }}
+
+        >
+
+          {loading ? 'Processing...' : isLogin ? 'Login' : 'Register'}
+
+        </button>
+
+      </form>
+
+
+
+      <div style={{ textAlign: 'center', marginTop: '16px', fontSize: '14px' }}>
+
+        <span style={{ color: '#94a3b8' }}>
+
+          {isLogin ? "Don't have an account? " : 'Already have an account? '}
+
+        </span>
+
+        <button
+
+          type="button"
+
+          onClick={() => setIsLogin(!isLogin)}
+
+          style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', fontWeight: 'bold', textDecoration: 'underline' }}
+
+        >
+
+          {isLogin ? 'Register' : 'Login'}
+
+        </button>
+
       </div>
 
-      {/* Footer text */}
-      <p style={{ color: '#64748b', fontSize: '0.8rem', marginTop: '30px' }}>
-        © 2026 TrafficAlert. All rights reserved.
-      </p>
     </div>
-  );
-};
 
-export default Auth;
+  );
+
+}
