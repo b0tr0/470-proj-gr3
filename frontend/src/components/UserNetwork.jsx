@@ -1,244 +1,370 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import API from '../api';
+import TrustBadge from './TrustBadge';
+import ChatModal from './ChatModal';
 
-const UserNetwork = () => {
-  
-  const [friends, setFriends] = useState(() => {
-    const savedFriends = localStorage.getItem('user_network_friends');
-    if (savedFriends) {
-      try {
-        return JSON.parse(savedFriends);
-      } catch (e) {
-        console.error('Error parsing saved friends', e);
+export default function UserNetwork() {
+  const [friends, setFriends] = useState([]);
+  const [friendRequests, setFriendRequests] = useState([]);
+  const [targetUsername, setTargetUsername] = useState('');
+  const [sharingLoc, setSharingLoc] = useState(false);
+  const [lastUpdatedLoc, setLastUpdatedLoc] = useState('');
+  const [activeChatFriend, setActiveChatFriend] = useState(null);
+
+  const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+  const userRole = (userInfo.role || '').toLowerCase().trim();
+  const isAuthority = userRole === 'authority';
+
+  const fetchNetwork = async () => {
+    try {
+      const { data } = await API.get('/friends');
+      setFriends(data.friends || []);
+      setFriendRequests(data.friendRequests || []);
+      if (data.myLocation?.lastLocationUpdate) {
+        setLastUpdatedLoc(
+          new Date(data.myLocation.lastLocationUpdate).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+        );
       }
-    }
-    
-    return [
-      { name: 'Sarah Jenkins', status: 'Commuting' },
-      { name: 'Dave Miller', status: 'Idle' },
-      { name: 'Alex Rivera', status: 'Driving' },
-    ];
-  });
-
-  const [friendName, setFriendName] = useState('');
-  const [friendStatus, setFriendStatus] = useState('Commuting');
-
-  // 📍 Location Sharing States
-  const [locationSharing, setLocationSharing] = useState(false);
-  const [locStatus, setLocStatus] = useState('');
-
-  useEffect(() => {
-    localStorage.setItem('user_network_friends', JSON.stringify(friends));
-  }, [friends]);
-
-  const handleAddFriend = (e) => {
-    e.preventDefault();
-    if (friendName.trim() !== '') {
-      const updatedFriends = [...friends, { name: friendName, status: friendStatus }];
-      setFriends(updatedFriends);
-      setFriendName('');
-      setFriendStatus('Commuting');
+    } catch (err) {
+      console.error('Error fetching network:', err);
     }
   };
 
-  // 📍 Share Location Handler
+  useEffect(() => {
+    fetchNetwork();
+  }, []);
+
+  const handleAddFriend = async (e) => {
+    e.preventDefault();
+    if (isAuthority) {
+      alert('Official authority accounts cannot add personal friends.');
+      return;
+    }
+    if (!targetUsername.trim()) return;
+
+    try {
+      const { data } = await API.post('/friends/request', {
+        targetUsername: targetUsername.trim(),
+      });
+      alert(data.message || 'Friend request sent!');
+      setTargetUsername('');
+      fetchNetwork();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to send friend request.');
+    }
+  };
+
+  const handleAccept = async (senderId) => {
+    try {
+      const { data } = await API.post(`/friends/accept/${senderId}`);
+      alert(data.message);
+      fetchNetwork();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to accept request.');
+    }
+  };
+
+  const handleReject = async (senderId) => {
+    try {
+      const { data } = await API.post(`/friends/reject/${senderId}`);
+      alert(data.message);
+      fetchNetwork();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to decline request.');
+    }
+  };
+
   const handleShareLocation = () => {
     if (!navigator.geolocation) {
-      setLocStatus('Geolocation is not supported by your browser');
+      alert('Geolocation is not supported by your browser.');
       return;
     }
 
-    setLocStatus('Getting location...');
-
+    setSharingLoc(true);
     navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
+      async (pos) => {
         try {
-          await axios.post('http://localhost:5000/api/users/share-location', {
-            latitude,
-            longitude
+          await API.put('/friends/location', {
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
           });
-          setLocationSharing(true);
-          setLocStatus('Location shared successfully!');
+          alert('📍 Location shared with network!');
+          fetchNetwork();
         } catch (err) {
-          console.error(err);
-          setLocStatus('Failed to send location to server');
+          alert('Failed to update location on network.');
+        } finally {
+          setSharingLoc(false);
         }
       },
-      (error) => {
-        setLocStatus(`Error: ${error.message}`);
-      }
+      () => {
+        alert('Could not access GPS location. Please allow permissions.');
+        setSharingLoc(false);
+      },
+      { enableHighAccuracy: true }
     );
   };
 
   return (
-    <div style={{ backgroundColor: '#062319', minHeight: '100vh', padding: '24px', fontFamily: 'sans-serif' }}>
-      <h1 style={{ fontSize: '20px', fontWeight: 'bold', color: '#ccfbf1', marginBottom: '24px' }}>
-        User Network
-      </h1>
+    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '30px 20px', color: '#ffffff' }}>
+      <h2 style={{ fontSize: '1.6rem', fontWeight: '800', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        🌐 User Network
+      </h2>
 
-      {/* Main Container - Side by Side */}
-      <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'flex-start', gap: '20px', flexWrap: 'wrap' }}>
-
-        {/* 1. User Friend List Card */}
-        <div style={{ width: '250px', backgroundColor: '#ffffff', padding: '16px', borderRadius: '16px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}>
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-            <span style={{ fontSize: '16px' }}>👥</span>
-            <h2 style={{ margin: 0, fontSize: '14px', fontWeight: 'bold', color: '#111827' }}>User Friend List</h2>
-          </div>
-
-          {/* Form */}
-          <form onSubmit={handleAddFriend} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
-            <div style={{ display: 'flex', gap: '6px' }}>
-              <input
-                type="text"
-                placeholder="Enter Name"
-                value={friendName}
-                onChange={(e) => setFriendName(e.target.value)}
-                style={{
-                  width: '60%',
-                  padding: '6px 8px',
-                  fontSize: '12px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  outline: 'none'
-                }}
-              />
-              <select
-                value={friendStatus}
-                onChange={(e) => setFriendStatus(e.target.value)}
-                style={{
-                  width: '40%',
-                  padding: '6px 4px',
-                  fontSize: '11px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  backgroundColor: '#ffffff'
-                }}
-              >
-                <option value="Commuting">Commuting</option>
-                <option value="Idle">Idle</option>
-                <option value="Driving">Driving</option>
-              </select>
-            </div>
-
-            <button
-              type="submit"
-              style={{
-                width: '100%',
-                padding: '8px',
-                fontSize: '12px',
-                fontWeight: '600',
-                color: '#ffffff',
-                backgroundColor: '#ef4444',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer'
-              }}
-            >
-              Add Friend
-            </button>
-          </form>
-
-          {/* Friends List Items */}
+      {/* Pending Requests Banner */}
+      {!isAuthority && friendRequests.length > 0 && (
+        <div style={{
+          backgroundColor: '#064e3b',
+          border: '1px solid #10b981',
+          borderRadius: '12px',
+          padding: '16px 20px',
+          marginBottom: '24px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+        }}>
+          <h3 style={{ margin: '0 0 12px 0', fontSize: '1rem', color: '#a7f3d0' }}>
+            📬 Pending Friend Requests ({friendRequests.length})
+          </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {friends.map((friend, index) => (
-              <div
-                key={index}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '10px 12px',
-                  backgroundColor: '#f8fafc',
-                  borderRadius: '12px',
-                  border: '1px solid #f1f5f9'
-                }}
-              >
-                <span style={{ fontSize: '12px', fontWeight: '600', color: '#1e293b' }}>
-                  {friend.name}
-                </span>
-                <span
-                  style={{
-                    fontSize: '10px',
-                    fontWeight: '500',
-                    color: '#64748b',
-                    backgroundColor: '#e2e8f0',
-                    padding: '3px 10px',
-                    borderRadius: '9999px',
-                    whiteSpace: 'nowrap'
-                  }}
-                >
-                  {friend.status}
-                </span>
+            {friendRequests.map((reqUser) => (
+              <div key={reqUser._id} style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                backgroundColor: 'rgba(0,0,0,0.2)',
+                padding: '10px 14px',
+                borderRadius: '8px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontWeight: 'bold' }}>👤 {reqUser.username}</span>
+                  <TrustBadge score={reqUser.trustScore ?? 100} role={reqUser.role} />
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={() => handleAccept(reqUser._id)}
+                    style={{
+                      backgroundColor: '#10b981',
+                      color: '#ffffff',
+                      border: 'none',
+                      padding: '6px 14px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontWeight: 'bold',
+                      fontSize: '12px'
+                    }}
+                  >
+                    Accept
+                  </button>
+                  <button
+                    onClick={() => handleReject(reqUser._id)}
+                    style={{
+                      backgroundColor: '#ef4444',
+                      color: '#ffffff',
+                      border: 'none',
+                      padding: '6px 14px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontWeight: 'bold',
+                      fontSize: '12px'
+                    }}
+                  >
+                    Decline
+                  </button>
+                </div>
               </div>
             ))}
           </div>
         </div>
+      )}
 
-        {/* 2. Live Location Card */}
-        <div style={{ width: '220px', backgroundColor: '#ffffff', padding: '16px', borderRadius: '16px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-            <span style={{ fontSize: '16px' }}>📍</span>
-            <h2 style={{ margin: 0, fontSize: '14px', fontWeight: 'bold', color: '#111827' }}>Live Location</h2>
+      {/* 3-Column Layout */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
+        
+        {/* Column 1: Friends List & Add Form */}
+        <div style={{
+          backgroundColor: '#082f24',
+          border: '1px solid #134e40',
+          borderRadius: '14px',
+          padding: '20px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+        }}>
+          <h3 style={{ margin: '0 0 16px 0', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            👥 User Friend List
+          </h3>
+
+          {isAuthority ? (
+            <p style={{ fontSize: '13px', color: '#93c5fd', backgroundColor: '#1e3a8a', padding: '12px', borderRadius: '8px', margin: '0 0 16px 0' }}>
+              ℹ️ Official authority accounts cannot send or receive personal friend requests.
+            </p>
+          ) : (
+            <form onSubmit={handleAddFriend} style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
+              <input
+                type="text"
+                placeholder="Enter exact username..."
+                value={targetUsername}
+                onChange={(e) => setTargetUsername(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '12px 14px',
+                  borderRadius: '8px',
+                  backgroundColor: '#041f17',
+                  border: '1.5px solid #10b981',
+                  color: '#ffffff',
+                  fontSize: '0.95rem',
+                  boxSizing: 'border-box',
+                  outline: 'none'
+                }}
+              />
+
+              <button
+                type="submit"
+                style={{
+                  width: '100%',
+                  backgroundColor: '#ef4444',
+                  color: '#ffffff',
+                  border: 'none',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  fontWeight: 'bold',
+                  fontSize: '0.95rem',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s'
+                }}
+              >
+                Add Friend
+              </button>
+            </form>
+          )}
+
+          {/* Friends List */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {friends.length === 0 ? (
+              <p style={{ fontSize: '13px', color: '#94a3b8', textAlign: 'center', margin: '20px 0' }}>
+                {isAuthority ? 'No friend connections available for authority accounts.' : 'No friends added yet. Send a request using a username above!'}
+              </p>
+            ) : (
+              friends.map((friend) => (
+                <div key={friend._id} style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  backgroundColor: '#041f17',
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  border: '1px solid #134e40'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontWeight: '600', fontSize: '0.95rem' }}>👤 {friend.username}</span>
+                    <TrustBadge score={friend.trustScore ?? 100} role={friend.role} />
+                  </div>
+                  <button
+                    onClick={() => setActiveChatFriend(friend)}
+                    style={{
+                      backgroundColor: '#0f766e',
+                      color: '#ffffff',
+                      border: 'none',
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontWeight: 'bold',
+                      fontSize: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    💬 Message
+                  </button>
+                </div>
+              ))
+            )}
           </div>
+        </div>
 
-          <p style={{ fontSize: '11px', color: '#64748b', margin: '0 0 12px 0' }}>
-            Share your current location with friends on the network.
-          </p>
+        {/* Column 2: Live Location */}
+        <div style={{
+          backgroundColor: '#082f24',
+          border: '1px solid #134e40',
+          borderRadius: '14px',
+          padding: '20px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between'
+        }}>
+          <div>
+            <h3 style={{ margin: '0 0 12px 0', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              📍 Live Location
+            </h3>
+            <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: '1.5' }}>
+              Share your current GPS coordinates to receive proximity hazard alerts and emergency broadcasts.
+            </p>
+            {lastUpdatedLoc && (
+              <p style={{ fontSize: '12px', color: '#10b981', marginTop: '12px' }}>
+                ✓ Last shared at {lastUpdatedLoc}
+              </p>
+            )}
+          </div>
 
           <button
             onClick={handleShareLocation}
+            disabled={sharingLoc}
             style={{
-              width: '100%',
-              padding: '8px',
-              fontSize: '12px',
-              fontWeight: '600',
+              backgroundColor: '#0284c7',
               color: '#ffffff',
-              backgroundColor: locationSharing ? '#10b981' : '#0284c7',
               border: 'none',
+              padding: '12px',
               borderRadius: '8px',
-              cursor: 'pointer'
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              marginTop: '20px',
+              fontSize: '0.95rem'
             }}
           >
-            {locationSharing ? '✓ Location Active' : 'Share Location'}
+            {sharingLoc ? 'Acquiring GPS Coordinates...' : 'Share Location'}
           </button>
-
-          {locStatus && (
-            <p style={{ fontSize: '10px', marginTop: '8px', color: locationSharing ? '#059669' : '#dc2626' }}>
-              {locStatus}
-            </p>
-          )}
         </div>
 
-        {/* 3. Priority Notifications Card */}
-        <div style={{ width: '240px', backgroundColor: '#ffffff', padding: '16px', borderRadius: '16px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-            <span style={{ fontSize: '16px' }}>🔔</span>
-            <div>
-              <h2 style={{ margin: 0, fontSize: '14px', fontWeight: 'bold', color: '#111827' }}>
-                Priority Notifications
-              </h2>
-              <p style={{ margin: '4px 0 0 0', fontSize: '10px', color: '#94a3b8' }}>
-                Alerts triggered by proximity & upvote thresholds
-              </p>
-            </div>
-          </div>
+        {/* Column 3: Priority Notifications Info */}
+        <div style={{
+          backgroundColor: '#082f24',
+          border: '1px solid #134e40',
+          borderRadius: '14px',
+          padding: '20px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+        }}>
+          <h3 style={{ margin: '0 0 12px 0', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            🔔 Priority Notifications
+          </h3>
+          <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '14px' }}>
+            Alerts triggered by proximity, SOS beacons, and direct messages.
+          </p>
 
-          <div style={{ marginTop: '12px', padding: '10px', backgroundColor: '#fef2f2', border: '1px solid #fee2e2', borderRadius: '12px' }}>
-            <span style={{ fontSize: '9px', fontWeight: 'bold', color: '#b91c1c', letterSpacing: '0.5px', display: 'block', marginBottom: '4px' }}>
-              25+ UPVOTES
+          <div style={{
+            backgroundColor: '#ffffff',
+            color: '#0f172a',
+            padding: '14px',
+            borderRadius: '8px',
+            borderLeft: '4px solid #ef4444'
+          }}>
+            <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#ef4444', textTransform: 'uppercase' }}>
+              Network Alerts Active
             </span>
-            <p style={{ margin: 0, fontSize: '10px', color: '#991b1b', lineHeight: '1.4' }}>
-              High Upvote Alert: Major blockage reported 1.2 miles away near Downtown Connector!
+            <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#334155', lineHeight: '1.4' }}>
+              Live alerts broadcast directly to your notification dropdown.
             </p>
           </div>
         </div>
 
       </div>
+
+      {activeChatFriend && (
+        <ChatModal
+          friend={activeChatFriend}
+          onClose={() => setActiveChatFriend(null)}
+        />
+      )}
     </div>
   );
-};
-
-export default UserNetwork;
+}

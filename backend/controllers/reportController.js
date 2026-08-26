@@ -1,6 +1,29 @@
 const Report = require('../models/Report');
+const User = require('../models/User');
+const { 
+  sendProximityAlerts, 
+  checkUpvoteThresholdAlert, 
+  sendVoteNotification,
+  sendCommentNotification,
+  sendVerificationNotification 
+} = require('./notificationController');
 
-// @desc    Create a new report (Supports both Logged-in & Anonymous)
+// Helper to safely adjust user trust scores starting from a 100 baseline
+const adjustTrustScore = async (userId, delta) => {
+  if (!userId) return;
+  try {
+    const user = await User.findById(userId);
+    if (user) {
+      const currentScore = typeof user.trustScore === 'number' ? user.trustScore : 100;
+      user.trustScore = Math.max(0, currentScore + delta);
+      await user.save();
+    }
+  } catch (err) {
+    console.error('Error adjusting trust score:', err);
+  }
+};
+
+// @desc    Create a new report
 // @route   POST /api/reports
 // @access  Public/Private
 const createReport = async (req, res) => {
@@ -13,34 +36,68 @@ const createReport = async (req, res) => {
     const report = await Report.create({
       title,
       description,
-      category,
-      severity,
+      category: category || 'other',
+      severity: severity || 'moderate',
       location,
       imageUrl,
       postedBy: userId,
       isAnonymous: anonymousPost,
+      upvotes: [],
+      downvotes: [],
+      votes: 0,
       ...(expiresAt && { expiresAt }),
     });
 
+    if (typeof sendProximityAlerts === 'function') {
+      sendProximityAlerts(report);
+    }
+
     res.status(201).json(report);
   } catch (error) {
+    console.error('Create Report Error:', error);
     res.status(400).json({ message: error.message });
   }
 };
 
-// @desc    Get all active non-deleted reports
+// @desc    Get all active non-deleted, non-expired, and non-resolved reports for Feed
 // @route   GET /api/reports
 // @access  Public
 const getReports = async (req, res) => {
   try {
-    const reports = await Report.find({ 
-      $or: [{ isDeleted: false }, { isDeleted: { $exists: false } }]
+    const now = new Date();
+    const nowISO = now.toISOString();
+
+    const reports = await Report.find({
+      $and: [
+        { $or: [{ isDeleted: false }, { isDeleted: { $exists: false } }] },
+        { isExpired: { $ne: true } },
+        // Exclude resolved reports from general feed
+        { status: { $ne: 'resolved' } },
+        { authorityStatus: { $ne: 'resolved' } },
+        {
+          $or: [
+            { expiresAt: { $gt: now } },
+            { expiresAt: { $gt: nowISO } },
+            { expiresAt: null },
+            { expiresAt: { $exists: false } }
+          ]
+        }
+      ]
     })
-      .populate('postedBy', 'username email role')
+      .populate('postedBy', 'username email role trustScore')
       .sort({ createdAt: -1 });
 
-    res.status(200).json(reports);
+    // In-memory safety guard
+    const activeReports = reports.filter((r) => {
+      if (r.isDeleted === true || r.isExpired === true) return false;
+      if (r.status === 'resolved' || r.authorityStatus === 'resolved') return false;
+      if (!r.expiresAt) return true;
+      return new Date(r.expiresAt).getTime() > now.getTime();
+    });
+
+    res.status(200).json(activeReports);
   } catch (error) {
+    console.error('Get Reports Error:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -50,20 +107,95 @@ const getReports = async (req, res) => {
 // @access  Private
 const voteReport = async (req, res) => {
   try {
-    const report = await Report.findById(req.params.id);
+    const { type } = req.body;
+    const userId = req.user?._id || req.user?.id;
 
+    if (!userId) {
+      return res.status(401).json({ message: 'You must be logged in to vote.' });
+    }
+
+    const report = await Report.findById(req.params.id);
     if (!report) {
       return res.status(404).json({ message: 'Report not found' });
     }
 
-    if (req.user && !report.upvotes.includes(req.user._id)) {
-      report.upvotes.push(req.user._id);
-      await report.save();
+    report.upvotes = report.upvotes || [];
+    report.downvotes = report.downvotes || [];
+
+    const targetAuthorId = report.postedBy;
+    const hasUpvoted = report.upvotes.some((id) => id.toString() === userId.toString());
+    const hasDownvoted = report.downvotes.some((id) => id.toString() === userId.toString());
+
+    if (type === 'upvote') {
+      if (hasUpvoted) {
+        report.upvotes = report.upvotes.filter((id) => id.toString() !== userId.toString());
+        if (targetAuthorId && !report.isAnonymous) {
+          await adjustTrustScore(targetAuthorId, -1);
+        }
+      } else {
+        report.upvotes.push(userId);
+        let trustDelta = 1;
+        if (hasDownvoted) {
+          report.downvotes = report.downvotes.filter((id) => id.toString() !== userId.toString());
+          trustDelta = 2;
+        }
+        if (targetAuthorId && !report.isAnonymous) {
+          await adjustTrustScore(targetAuthorId, trustDelta);
+
+          sendVoteNotification({
+            recipientId: targetAuthorId,
+            senderId: userId,
+            senderName: req.user?.username,
+            actionType: 'upvote',
+            contentType: 'report',
+            contentTitle: report.title,
+            contentId: report._id
+          });
+        }
+
+        if (typeof checkUpvoteThresholdAlert === 'function') {
+          checkUpvoteThresholdAlert(report);
+        }
+      }
+    } else if (type === 'downvote') {
+      if (hasDownvoted) {
+        report.downvotes = report.downvotes.filter((id) => id.toString() !== userId.toString());
+        if (targetAuthorId && !report.isAnonymous) {
+          await adjustTrustScore(targetAuthorId, 1);
+        }
+      } else {
+        report.downvotes.push(userId);
+        let trustDelta = -1;
+        if (hasUpvoted) {
+          report.upvotes = report.upvotes.filter((id) => id.toString() !== userId.toString());
+          trustDelta = -2;
+        }
+        if (targetAuthorId && !report.isAnonymous) {
+          await adjustTrustScore(targetAuthorId, trustDelta);
+
+          sendVoteNotification({
+            recipientId: targetAuthorId,
+            senderId: userId,
+            senderName: req.user?.username,
+            actionType: 'downvote',
+            contentType: 'report',
+            contentTitle: report.title,
+            contentId: report._id
+          });
+        }
+      }
     }
 
-    res.status(200).json(report);
+    report.votes = report.upvotes.length - report.downvotes.length;
+    await report.save();
+
+    const populatedReport = await Report.findById(report._id)
+      .populate('postedBy', 'username email role trustScore');
+
+    res.status(200).json(populatedReport);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    console.error('Vote Report Error:', error);
+    res.status(500).json({ message: error.message });
   }
 };
 
@@ -81,18 +213,30 @@ const commentReport = async (req, res) => {
 
     const authorName = req.user ? (req.user.username || req.user.name) : 'Anonymous';
 
-    const comment = {
+    report.comments.push({
       text,
       user: req.user ? req.user._id : null,
       username: authorName,
       createdAt: new Date(),
-    };
+    });
 
-    report.comments.push(comment);
     await report.save();
+
+    if (report.postedBy && !report.isAnonymous) {
+      sendCommentNotification({
+        recipientId: report.postedBy,
+        senderId: req.user ? req.user._id : null,
+        senderName: authorName,
+        contentType: 'report',
+        contentTitle: report.title,
+        commentText: text,
+        contentId: report._id
+      });
+    }
 
     res.status(201).json(report);
   } catch (error) {
+    console.error('Comment Error:', error);
     res.status(400).json({ message: error.message });
   }
 };
@@ -112,42 +256,79 @@ const flagReport = async (req, res) => {
     report.moderatorFlag = flagType || 'false/misleading';
     await report.save();
 
+    if (report.postedBy && !report.isAnonymous) {
+      await adjustTrustScore(report.postedBy, -5);
+    }
+
     res.status(200).json(report);
   } catch (error) {
+    console.error('Flag Report Error:', error);
     res.status(400).json({ message: error.message });
   }
 };
 
-// @desc    Verify a report
+// @desc    Verify a report (Restricted strictly to Official Authority & Admin)
 // @route   PUT /api/reports/:id/verify
 // @access  Private/Authority
 const verifyReport = async (req, res) => {
   try {
     const { status } = req.body;
-    const report = await Report.findById(req.params.id);
+    const userRole = (req.user?.role || '').toLowerCase().trim();
 
+    // Block moderators from verifying
+    if (!['authority', 'admin'].includes(userRole)) {
+      return res.status(403).json({ 
+        message: 'Unauthorized! Only official authority accounts can verify reports.' 
+      });
+    }
+
+    const report = await Report.findById(req.params.id);
     if (!report) {
       return res.status(404).json({ message: 'Report not found' });
     }
 
+    const wasUnverified = report.authorityStatus !== 'verified';
     report.authorityStatus = status || 'verified';
     await report.save();
 
+    // Award +5 trust points and send notification to original author
+    if (wasUnverified && report.postedBy && !report.isAnonymous) {
+      await adjustTrustScore(report.postedBy, 5);
+
+      if (typeof sendVerificationNotification === 'function') {
+        await sendVerificationNotification({
+          recipientId: report.postedBy,
+          senderId: req.user?._id,
+          senderName: req.user?.username || 'Authority',
+          reportTitle: report.title,
+          reportId: report._id
+        });
+      }
+    }
+
     res.status(200).json(report);
   } catch (error) {
+    console.error('Verify Report Error:', error);
     res.status(400).json({ message: error.message });
   }
 };
 
-// 🟢 NEW: Resolve a report
-// @desc    Resolve a report
+// @desc    Resolve a report (Restricted strictly to Official Authority & Admin)
 // @route   PUT or PATCH /api/reports/:id/resolve
 // @access  Private/Authority
 const resolveReport = async (req, res) => {
   try {
     const { status } = req.body;
-    const report = await Report.findById(req.params.id);
+    const userRole = (req.user?.role || '').toLowerCase().trim();
 
+    // Block moderators from marking resolved
+    if (!['authority', 'admin'].includes(userRole)) {
+      return res.status(403).json({ 
+        message: 'Unauthorized! Only official authority accounts can resolve reports.' 
+      });
+    }
+
+    const report = await Report.findById(req.params.id);
     if (!report) {
       return res.status(404).json({ message: 'Report not found' });
     }
@@ -157,23 +338,37 @@ const resolveReport = async (req, res) => {
 
     res.status(200).json(report);
   } catch (error) {
+    console.error('Resolve Report Error:', error);
     res.status(400).json({ message: error.message });
   }
 };
 
-// @desc    Delete a report (Hard Delete to completely remove from Database)
+// @desc    Delete a report (Author, Moderator, Authority, Admin)
 // @route   DELETE /api/reports/:id
 // @access  Private
 const deleteReport = async (req, res) => {
   try {
-    const report = await Report.findByIdAndDelete(req.params.id);
+    const report = await Report.findById(req.params.id);
 
     if (!report) {
       return res.status(404).json({ message: 'Report not found' });
     }
 
-    res.status(200).json({ id: req.params.id, message: 'Report deleted permanently' });
+    const currentUserId = req.user?._id?.toString();
+    const userRole = (req.user?.role || '').toLowerCase().trim();
+
+    const postAuthorId = (report.postedBy?._id || report.postedBy || '').toString();
+    const isAuthor = currentUserId && postAuthorId === currentUserId;
+    const isPrivileged = ['authority', 'moderator', 'community moderator', 'admin'].includes(userRole);
+
+    if (!isAuthor && !isPrivileged) {
+      return res.status(403).json({ message: 'Not authorized to delete this report.' });
+    }
+
+    await Report.findByIdAndDelete(req.params.id);
+    res.status(200).json({ id: req.params.id, message: 'Report deleted successfully' });
   } catch (error) {
+    console.error('Delete Report Error:', error);
     res.status(400).json({ message: error.message });
   }
 };

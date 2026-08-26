@@ -11,7 +11,7 @@ import FriendList from './components/FriendList';
 import TrendAnalysisChart from './components/TrendAnalysisChart';
 import UserNetwork from './components/UserNetwork';
 import ProtectedRoute from './components/ProtectedRoute';
-
+import SOSButton from './components/SOSButton';
 
 // Pages
 import Auth from './pages/Auth';
@@ -27,7 +27,7 @@ export default function App() {
   return (
     <div style={{ backgroundColor: '#062319', color: '#ffffff', minHeight: '100vh', width: '100vw', overflowX: 'hidden' }}>
       
-      {/* Navbar and notifications */}
+      {/* Navbar and Notification system */}
       {!isAuthPage && (
         <>
           <div style={{ position: 'sticky', top: 0, zIndex: 9999, width: '100%' }}>
@@ -54,8 +54,11 @@ export default function App() {
         </Routes>
       </main>
 
-      {/* Chatbot */}
-      <div style={{ position: 'fixed', bottom: '20px', right: '20px', zIndex: 99999 }}>
+      {/* Emergency SOS Distress Beacon (Bottommost: 24px) */}
+      {!isAuthPage && <SOSButton />}
+
+      {/* AI Assistant Chatbot (Stacked directly above SOS: 96px) */}
+      <div style={{ position: 'fixed', bottom: '96px', right: '24px', zIndex: 99999 }}>
         <AIChatbot />
       </div>
     </div>

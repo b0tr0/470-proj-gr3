@@ -1,7 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-
 const protect = async (req, res, next) => {
   let token;
 
@@ -14,29 +13,32 @@ const protect = async (req, res, next) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secretkey');
 
       req.user = await User.findById(decoded.id).select('-password');
-      next();
+      if (!req.user) {
+        return res.status(401).json({ message: 'User not found.' });
+      }
+      return next();
     } catch (error) {
       console.error('Token verification error:', error);
-      return res.status(401).json({ message: 'Not authorized, token failed' });
+      return res.status(401).json({ message: 'Not authorized, token invalid or expired.' });
     }
   }
 
   if (!token) {
-    return res.status(401).json({ message: 'Not authorized, no token' });
+    return res.status(401).json({ message: 'Not authorized, no token provided.' });
   }
 };
 
-
 const isAuthority = (req, res, next) => {
-  const role = req.user && req.user.role ? String(req.user.role).toLowerCase() : '';
+  const role = (req.user?.role || '').toString().toLowerCase().trim();
 
-  if (role === 'authority' || role === 'admin' || role === 'moderator') {
-    next();
-  } else {
-    return res.status(403).json({ 
-      message: 'Unauthorized! Only official authority accounts can resolve reports.' 
-    });
+  // Only official authority and admin have authority access
+  if (['authority', 'admin'].includes(role)) {
+    return next();
   }
+
+  return res.status(403).json({
+    message: 'Unauthorized! Only official authority accounts can verify or resolve reports.'
+  });
 };
 
 module.exports = { protect, isAuthority };

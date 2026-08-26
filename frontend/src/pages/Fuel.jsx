@@ -49,7 +49,6 @@ export default function Fuel() {
         username: userInfo.username || userInfo.name || 'Registered User'
       };
 
-      // Send token in Headers properly
       await axios.post('http://localhost:5000/api/fuel', payload, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -79,18 +78,44 @@ export default function Fuel() {
   };
 
   return (
-    <div style={{ padding: '24px', maxWidth: '800px', margin: '0 auto', color: '#fff' }}>
-      <h2 style={{ fontSize: '1.8rem', fontWeight: 'bold', marginBottom: '16px' }}>⛽ Fuel Availability & Station Map</h2>
+    <div style={{
+      padding: '24px',
+      maxWidth: '800px',
+      margin: '0 auto',
+      color: 'var(--text-primary)',
+      transition: 'color 0.3s ease'
+    }}>
+      <h2 style={{ fontSize: '1.8rem', fontWeight: 'bold', marginBottom: '16px', color: 'var(--text-primary)' }}>
+        ⛽ Fuel Availability & Station Map
+      </h2>
 
-      <form onSubmit={handleSubmit} style={{ backgroundColor: '#0d3326', padding: '16px', borderRadius: '12px', marginBottom: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Update Station Status</h3>
+      {/* Input Form Card */}
+      <form onSubmit={handleSubmit} style={{
+        backgroundColor: 'var(--bg-card)',
+        padding: '20px',
+        borderRadius: '12px',
+        marginBottom: '24px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px',
+        border: '1px solid var(--border-color)',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+        transition: 'all 0.3s ease'
+      }}>
+        <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-primary)' }}>Update Station Status</h3>
         
         <input 
           type="text" 
           placeholder="Station Name (e.g. Padma Oil, Dhanmondi)"
           value={formData.stationName}
           onChange={(e) => setFormData({ ...formData, stationName: e.target.value })}
-          style={{ padding: '10px', borderRadius: '6px', border: '1px solid #1e5340', backgroundColor: '#062319', color: '#fff' }}
+          style={{
+            padding: '10px',
+            borderRadius: '6px',
+            border: '1.5px solid var(--input-border)',
+            backgroundColor: 'var(--input-bg)',
+            color: 'var(--input-text)'
+          }}
         />
 
         <input 
@@ -98,14 +123,27 @@ export default function Fuel() {
           placeholder="Location / Area Name"
           value={formData.locationName}
           onChange={(e) => setFormData({ ...formData, locationName: e.target.value })}
-          style={{ padding: '10px', borderRadius: '6px', border: '1px solid #1e5340', backgroundColor: '#062319', color: '#fff' }}
+          style={{
+            padding: '10px',
+            borderRadius: '6px',
+            border: '1.5px solid var(--input-border)',
+            backgroundColor: 'var(--input-bg)',
+            color: 'var(--input-text)'
+          }}
         />
 
         <div style={{ display: 'flex', gap: '12px' }}>
           <select 
             value={formData.fuelType}
             onChange={(e) => setFormData({ ...formData, fuelType: e.target.value })}
-            style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #1e5340', backgroundColor: '#062319', color: '#fff' }}
+            style={{
+              flex: 1,
+              padding: '10px',
+              borderRadius: '6px',
+              border: '1.5px solid var(--input-border)',
+              backgroundColor: 'var(--input-bg)',
+              color: 'var(--input-text)'
+            }}
           >
             <option value="Octane">Octane</option>
             <option value="Petrol">Petrol</option>
@@ -116,7 +154,14 @@ export default function Fuel() {
           <select 
             value={formData.queueLength}
             onChange={(e) => setFormData({ ...formData, queueLength: e.target.value })}
-            style={{ flex: 1, padding: '10px', borderRadius: '6px', border: '1px solid #1e5340', backgroundColor: '#062319', color: '#fff' }}
+            style={{
+              flex: 1,
+              padding: '10px',
+              borderRadius: '6px',
+              border: '1.5px solid var(--input-border)',
+              backgroundColor: 'var(--input-bg)',
+              color: 'var(--input-text)'
+            }}
           >
             <option value="Low">Queue: Low</option>
             <option value="Medium">Queue: Medium</option>
@@ -124,24 +169,58 @@ export default function Fuel() {
           </select>
         </div>
 
-        <button type="submit" style={{ backgroundColor: '#10b981', color: '#fff', padding: '10px', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>
+        <button type="submit" style={{
+          backgroundColor: '#10b981',
+          color: '#ffffff',
+          padding: '12px',
+          border: 'none',
+          borderRadius: '6px',
+          fontWeight: 'bold',
+          cursor: 'pointer',
+          marginTop: '4px'
+        }}>
           Submit Fuel Status
         </button>
       </form>
 
-      <h3>Recent Fuel Updates</h3>
-      {loading ? <p>Loading updates...</p> : (
+      <h3 style={{ color: 'var(--text-primary)', marginBottom: '14px' }}>Recent Fuel Updates</h3>
+      {loading ? (
+        <p style={{ color: 'var(--text-secondary)' }}>Loading updates...</p>
+      ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {fuelStations.length === 0 ? <p style={{ color: '#94a3b8' }}>No fuel updates found.</p> : (
+          {fuelStations.length === 0 ? (
+            <p style={{ color: 'var(--text-secondary)' }}>No fuel updates found.</p>
+          ) : (
             fuelStations.map((item) => (
-              <div key={item._id || item.id} style={{ backgroundColor: '#0d3326', padding: '14px', borderRadius: '8px', borderLeft: '4px solid #10b981' }}>
+              <div key={item._id || item.id} style={{
+                backgroundColor: 'var(--bg-card)',
+                padding: '16px',
+                borderRadius: '10px',
+                border: '1px solid var(--border-color)',
+                borderLeft: '5px solid #10b981',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+                transition: 'all 0.3s ease'
+              }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h4 style={{ margin: 0, fontSize: '1.1rem' }}>{item.stationName || item.name || 'Fuel Station'}</h4>
-                  <span style={{ fontSize: '12px', color: '#a7f3d0' }}>Queue: {item.queueLength || item.status || 'Medium'}</span>
+                  <h4 style={{ margin: 0, fontSize: '1.15rem', color: 'var(--text-primary)' }}>
+                    {item.stationName || item.name || 'Fuel Station'}
+                  </h4>
+                  <span style={{
+                    fontSize: '12px',
+                    fontWeight: '700',
+                    color: '#059669',
+                    backgroundColor: '#d1fae5',
+                    padding: '3px 10px',
+                    borderRadius: '12px'
+                  }}>
+                    Queue: {item.queueLength || item.status || 'Medium'}
+                  </span>
                 </div>
-                <p style={{ margin: '4px 0', fontSize: '0.9rem', color: '#cbd5e1' }}>📍 {item.locationName || item.location || 'General Area'} | Type: {item.fuelType || 'General'}</p>
-                <p style={{ margin: 0, fontSize: '12px', color: '#94a3b8' }}>
-                  Posted by: <strong>{getAuthorName(item)}</strong>
+                <p style={{ margin: '8px 0 6px 0', fontSize: '0.92rem', color: 'var(--text-secondary)' }}>
+                  📍 {item.locationName || item.location || 'General Area'} | Type: <strong>{item.fuelType || 'General'}</strong>
+                </p>
+                <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary)' }}>
+                  Posted by: <strong style={{ color: 'var(--text-primary)' }}>{getAuthorName(item)}</strong>
                 </p>
               </div>
             ))

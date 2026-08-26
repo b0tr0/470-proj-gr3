@@ -1,81 +1,101 @@
 const Hazard = require('../models/Hazard');
-const { calculateHazardExpiresAt } = require('../models/Expiration');
+
+// Helper fallback for expiration if Expiration model is unavailable
+let calculateHazardExpiresAt;
+try {
+  calculateHazardExpiresAt = require('../models/Expiration').calculateHazardExpiresAt;
+} catch {
+  calculateHazardExpiresAt = () => new Date(Date.now() + 24 * 60 * 60 * 1000); // 24hr default
+}
 
 const createHazard = async (req, res) => {
-    const { type, severity, description, location } = req.body;
-    try {
-        if (!location?.lat || !location?.lng) {
-            return res.status(400).json({ message: 'Location is required for a hazard report.' });
-        }
-
-        const hazard = await Hazard.create({
-            reportedBy: req.user._id,
-            type,
-            severity, 
-            description,
-            location,
-            expiresAt: calculateHazardExpiresAt(type, severity)
-        });
-
-        const populated = await hazard.populate('reportedBy', 'username role');
-        res.status(201).json(populated);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
+  const { type, severity, description, location } = req.body;
+  try {
+    const userId = req.user?._id || req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: 'Authentication required. Please log in.' });
     }
+
+    if (!location?.lat || !location?.lng) {
+      return res.status(400).json({ message: 'Location is required for a hazard report.' });
+    }
+
+    const computedExpiresAt = typeof calculateHazardExpiresAt === 'function'
+      ? calculateHazardExpiresAt(type, severity)
+      : new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    const hazard = await Hazard.create({
+      reportedBy: userId,
+      type: type || 'other',
+      severity: severity || 'moderate',
+      description: description || '',
+      location: {
+        lat: Number(location.lat),
+        lng: Number(location.lng)
+      },
+      expiresAt: computedExpiresAt
+    });
+
+    const populated = await hazard.populate('reportedBy', 'username role');
+    res.status(201).json(populated);
+  } catch (error) {
+    console.error('Create Hazard Error:', error);
+    res.status(500).json({ message: error.message });
+  }
 };
 
 const getHazards = async (req, res) => {
-    try {
-        const hazards = await Hazard.find({
-            isDeleted: false,   // fixed: capital D, matches the schema field name
-            expiresAt: { $gt: new Date() }
-        })
-            .populate('reportedBy', 'username role')
-            .sort({ createdAt: -1 });
-        res.json(hazards);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
+  try {
+    const hazards = await Hazard.find({
+      isDeleted: false,
+      expiresAt: { $gt: new Date() }
+    })
+      .populate('reportedBy', 'username role')
+      .sort({ createdAt: -1 });
+    res.status(200).json(hazards);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
 const voteHazard = async (req, res) => {
-    const { voteType } = req.body;
-    const userId = req.user._id;
-    try { 
-        const hazard = await Hazard.findById(req.params.id);
-        if (!hazard) return res.status(404).json({ message: 'Hazard not found' });
+  const { voteType } = req.body;
+  const userId = req.user?._id || req.user?.id;
+  try {
+    const hazard = await Hazard.findById(req.params.id);
+    if (!hazard) return res.status(404).json({ message: 'Hazard not found' });
 
-        hazard.upvotes = hazard.upvotes.filter(id => id.toString() !== userId.toString());
-        hazard.downvotes = hazard.downvotes.filter(id => id.toString() !== userId.toString());
+    hazard.upvotes = (hazard.upvotes || []).filter(id => id.toString() !== userId.toString());
+    hazard.downvotes = (hazard.downvotes || []).filter(id => id.toString() !== userId.toString());
 
-        if (voteType === 'upvote') hazard.upvotes.push(userId);
-        if (voteType === 'downvote') hazard.downvotes.push(userId);
+    if (voteType === 'upvote') hazard.upvotes.push(userId);
+    if (voteType === 'downvote') hazard.downvotes.push(userId);
 
-        await hazard.save();
-        res.json(hazard);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
+    await hazard.save();
+    res.status(200).json(hazard);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
 const deleteHazard = async (req, res) => {
-    try {
-        const hazard = await Hazard.findById(req.params.id);
-        if (!hazard) return res.status(404).json({ message: 'Hazard not found' });
+  try {
+    const hazard = await Hazard.findById(req.params.id);
+    if (!hazard) return res.status(404).json({ message: 'Hazard not found' });
 
-        const isOwner = hazard.reportedBy.toString() === req.user._id.toString();
-        const isPrivileged = ['moderator', 'authority'].includes(req.user.role);
+    const isOwner = hazard.reportedBy?.toString() === req.user?._id?.toString();
+    const isPrivileged = ['moderator', 'authority', 'admin'].includes(req.user?.role);
 
-        if (!isOwner && !isPrivileged) {
-            return res.status(403).json({ message: 'Not authorized to delete this hazard' });
-        }
-
-        hazard.isDeleted = true;
-        await hazard.save();
-        res.json({ message: 'Hazard removed successfully' });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
+    if (!isOwner && !isPrivileged) {
+      return res.status(403).json({ message: 'Not authorized to delete this hazard' });
     }
+
+    hazard.isDeleted = true;
+    await hazard.save();
+    res.status(200).json({ message: 'Hazard removed successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
-module.exports = { createHazard, getHazards, voteHazard, deleteHazard }
+module.exports = { createHazard, getHazards, voteHazard, deleteHazard };

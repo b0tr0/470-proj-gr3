@@ -13,8 +13,10 @@ const friendsRoutes = require('./routes/friendsRoutes');
 const hazardRoutes = require('./routes/hazardRoutes');
 const trendsRoutes = require('./routes/trendsRoutes');
 const userRoutes = require('./routes/userRoutes');
-
+const notificationRoutes = require('./routes/notificationRoutes');
+const chatRoutes = require('./routes/chatRoutes');
 const app = express();
+
 
 app.use(express.json());
 app.use(cors());
@@ -31,6 +33,10 @@ app.use('/api/friends', friendsRoutes);
 app.use('/api/hazards', hazardRoutes);
 app.use('/api/trends', trendsRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/sos', require('./routes/sosRoutes'));
+app.use('/api/chat', chatRoutes);
+
 
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/traffic_alert';

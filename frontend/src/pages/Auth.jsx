@@ -1,39 +1,20 @@
 import React, { useState } from 'react';
-
 import { useNavigate } from 'react-router-dom';
-
 import API from '../api';
 
-
-
 export default function Auth() {
-
   const [isLogin, setIsLogin] = useState(true);
-
+  const [formData, setFormData] = useState({
+    username: '',
+    email: '',
+    password: '',
+    role: 'general'
+  });
   const [loading, setLoading] = useState(false);
-
   const navigate = useNavigate();
 
-
-
-  const [formData, setFormData] = useState({
-
-    username: '',
-
-    email: '',
-
-    password: '',
-
-    role: 'user'
-
-  });
-
-
-
   const handleChange = (e) => {
-
     setFormData({ ...formData, [e.target.name]: e.target.value });
-
   };
 
   const handleSubmit = async (e) => {
@@ -41,276 +22,193 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      const endpoint = isLogin ? '/auth/login' : '/auth/register';
-      const payload = isLogin
-        ? { email: formData.email, password: formData.password, role: formData.role }
-        : formData;
-
-      const { data } = await API.post(endpoint, payload);
-
       if (isLogin) {
-        const token = data.token || data.accessToken;
+        // LOGIN: Sends email/username & password (no role required)
+        const { data } = await API.post('/auth/login', {
+          email: formData.email,
+          password: formData.password
+        });
 
-        const userToStore = {
-          ...(data.user || {}),
-          email: data.user?.email || formData.email,
-          username: data.user?.username || data.user?.name || formData.username,
-          role: data.user?.role || data.user?.userType || formData.role
-        };
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('userInfo', JSON.stringify(data));
 
-        localStorage.setItem('token', token);
-        localStorage.setItem('userInfo', JSON.stringify(userToStore));
-
-        alert('Login successful!');
-
-        const userRole = (userToStore.role || '').toLowerCase();
-        if (
-          userRole === 'authority' || 
-          userRole === 'admin' || 
-          userRole === 'moderator' || 
-          userRole === 'community moderator'
-        ) {
-          navigate('/authority-dashboard'); 
+        alert('Logged in successfully!');
+        const userRole = (data.role || '').toLowerCase().trim();
+        if (userRole === 'authority' || userRole === 'admin') {
+          navigate('/authority');
         } else {
           navigate('/feed');
         }
       } else {
-        alert('Registration successful! Please login now.');
-        setIsLogin(true);
+        // REGISTER: Sends username, email, password, and chosen role
+        const { data } = await API.post('/auth/register', formData);
+
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('userInfo', JSON.stringify(data));
+
+        alert('Account created successfully!');
+        const userRole = (data.role || '').toLowerCase().trim();
+        if (userRole === 'authority' || userRole === 'admin') {
+          navigate('/authority');
+        } else {
+          navigate('/feed');
+        }
       }
     } catch (err) {
-      console.error('Authentication error:', err);
+      console.error('Auth error:', err);
       alert(err.response?.data?.message || 'Authentication failed.');
     } finally {
       setLoading(false);
     }
   };
 
-
-
-
-  
-
   return (
-
-    <div style={{ maxWidth: '420px', margin: '50px auto', padding: '24px', backgroundColor: '#0d3326', borderRadius: '12px', color: '#fff', border: '1px solid #1e5340', position: 'relative' }}>
-
-     
-
-      {/* System Active Status Marker */}
-
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '16px' }}>
-
-        <span style={{
-
-          width: '10px',
-
-          height: '10px',
-
-          backgroundColor: '#ef4444',
-
-          borderRadius: '50%',
-
-          display: 'inline-block',
-
-          boxShadow: '0 0 8px #ef4444'
-
-        }}></span>
-
-        <span style={{ fontSize: '12px', color: '#fca5a5', fontWeight: 'bold', letterSpacing: '0.5px' }}>
-
-          SYSTEM ACTIVE
-
-        </span>
-
-      </div>
-
-
-
-      <h2 style={{ textAlign: 'center', marginBottom: '20px', marginTop: 0 }}>
-
-        {isLogin ? '🔑 Account Login' : '📝 Create Account'}
-
+    <div style={{
+      maxWidth: '440px',
+      margin: '60px auto',
+      padding: '32px',
+      backgroundColor: 'var(--bg-card, #0f291e)',
+      borderRadius: '12px',
+      border: '1px solid var(--border-color, #1b4d3e)',
+      boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+      color: 'var(--text-primary, #ffffff)'
+    }}>
+      <h2 style={{ textAlign: 'center', marginBottom: '24px' }}>
+        {isLogin ? '🔐 Login' : '📝 Create Account'}
       </h2>
 
-
-
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-
-       
-
-        {/* User Role Selection */}
-
-        <div>
-
-          <label style={{ fontSize: '13px', color: '#a7f3d0' }}>
-
-            User Type <span style={{ color: '#ef4444' }}>●</span>
-
-          </label>
-
-          <select
-
-            name="role"
-
-            value={formData.role}
-
-            onChange={handleChange}
-
-            style={{ width: '100%', padding: '10px', borderRadius: '6px', backgroundColor: '#062319', color: '#fff', border: '1px solid #1e5340', marginTop: '4px' }}
-
-          >
-
-            <option value="user"> General User</option>
-
-            <option value="moderator"> Community Moderator</option>
-
-            <option value="authority">🛡️ Authority</option>
-
-          </select>
-
-        </div>
-
-
-
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {/* Role Selection: ONLY visible when Creating an Account */}
         {!isLogin && (
-
           <div>
-
-            <label style={{ fontSize: '13px', color: '#a7f3d0' }}>
-
-              Username <span style={{ color: '#ef4444' }}>●</span>
-
+            <label style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-secondary, #94a3b8)' }}>
+              User Type <span style={{ color: 'var(--accent-red, #ef4444)' }}>*</span>
             </label>
-
-            <input
-
-              type="text"
-
-              name="username"
-
-              required
-
-              placeholder="Enter username"
-
-              value={formData.username}
-
+            <select
+              name="role"
+              value={formData.role}
               onChange={handleChange}
-
-              style={{ width: '100%', padding: '10px', borderRadius: '6px', backgroundColor: '#062319', color: '#fff', border: '1px solid #1e5340', marginTop: '4px' }}
-
-            />
-
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                marginTop: '6px',
+                borderRadius: '6px',
+                border: '1.5px solid var(--input-border, #134e40)',
+                backgroundColor: 'var(--input-bg, #041f17)',
+                color: 'var(--input-text, #ffffff)',
+                boxSizing: 'border-box'
+              }}
+            >
+              <option value="general">General User</option>
+              <option value="moderator">Community Moderator</option>
+              <option value="authority">Official Authority</option>
+            </select>
           </div>
-
         )}
 
-
+        {/* Username: ONLY visible when Creating an Account */}
+        {!isLogin && (
+          <div>
+            <label style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-secondary, #94a3b8)' }}>
+              Username <span style={{ color: 'var(--accent-red, #ef4444)' }}>*</span>
+            </label>
+            <input
+              type="text"
+              name="username"
+              value={formData.username}
+              onChange={handleChange}
+              placeholder="Enter your username"
+              required={!isLogin}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                marginTop: '6px',
+                borderRadius: '6px',
+                border: '1.5px solid var(--input-border, #134e40)',
+                backgroundColor: 'var(--input-bg, #041f17)',
+                color: 'var(--input-text, #ffffff)',
+                boxSizing: 'border-box'
+              }}
+            />
+          </div>
+        )}
 
         <div>
-
-          <label style={{ fontSize: '13px', color: '#a7f3d0' }}>
-
-            Email <span style={{ color: '#ef4444' }}>●</span>
-
+          <label style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-secondary, #94a3b8)' }}>
+            {isLogin ? 'Email or Username' : 'Email Address'} <span style={{ color: 'var(--accent-red, #ef4444)' }}>*</span>
           </label>
-
           <input
-
-            type="email"
-
+            type={isLogin ? 'text' : 'email'}
             name="email"
-
-            required
-
-            placeholder="Enter email"
-
             value={formData.email}
-
             onChange={handleChange}
-
-            style={{ width: '100%', padding: '10px', borderRadius: '6px', backgroundColor: '#062319', color: '#fff', border: '1px solid #1e5340', marginTop: '4px' }}
-
+            placeholder={isLogin ? 'Enter email or username' : 'Enter email'}
+            required
+            style={{
+              width: '100%',
+              padding: '10px 12px',
+              marginTop: '6px',
+              borderRadius: '6px',
+              border: '1.5px solid var(--input-border, #134e40)',
+              backgroundColor: 'var(--input-bg, #041f17)',
+              color: 'var(--input-text, #ffffff)',
+              boxSizing: 'border-box'
+            }}
           />
-
         </div>
-
-
 
         <div>
-
-          <label style={{ fontSize: '13px', color: '#a7f3d0' }}>
-
-            Password <span style={{ color: '#ef4444' }}>●</span>
-
+          <label style={{ fontSize: '13px', fontWeight: 'bold', color: 'var(--text-secondary, #94a3b8)' }}>
+            Password <span style={{ color: 'var(--accent-red, #ef4444)' }}>*</span>
           </label>
-
           <input
-
             type="password"
-
             name="password"
-
-            required
-
-            placeholder="Enter password"
-
             value={formData.password}
-
             onChange={handleChange}
-
-            style={{ width: '100%', padding: '10px', borderRadius: '6px', backgroundColor: '#062319', color: '#fff', border: '1px solid #1e5340', marginTop: '4px' }}
-
+            placeholder="Enter password"
+            required
+            style={{
+              width: '100%',
+              padding: '10px 12px',
+              marginTop: '6px',
+              borderRadius: '6px',
+              border: '1.5px solid var(--input-border, #134e40)',
+              backgroundColor: 'var(--input-bg, #041f17)',
+              color: 'var(--input-text, #ffffff)',
+              boxSizing: 'border-box'
+            }}
           />
-
         </div>
-
-
 
         <button
-
           type="submit"
-
           disabled={loading}
-
-          style={{ padding: '12px', backgroundColor: '#2563eb', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', marginTop: '8px' }}
-
+          style={{
+            backgroundColor: '#2563eb',
+            color: '#ffffff',
+            padding: '12px',
+            border: 'none',
+            borderRadius: '6px',
+            fontWeight: 'bold',
+            fontSize: '1rem',
+            cursor: 'pointer',
+            marginTop: '8px'
+          }}
         >
-
-          {loading ? 'Processing...' : isLogin ? 'Login' : 'Register'}
-
+          {loading ? 'Processing...' : isLogin ? 'Sign In' : 'Create Account'}
         </button>
-
       </form>
 
-
-
-      <div style={{ textAlign: 'center', marginTop: '16px', fontSize: '14px' }}>
-
-        <span style={{ color: '#94a3b8' }}>
-
-          {isLogin ? "Don't have an account? " : 'Already have an account? '}
-
-        </span>
-
-        <button
-
-          type="button"
-
+      <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '13px', color: 'var(--text-secondary, #94a3b8)' }}>
+        {isLogin ? "Don't have an account? " : "Already have an account? "}
+        <span
           onClick={() => setIsLogin(!isLogin)}
-
-          style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', fontWeight: 'bold', textDecoration: 'underline' }}
-
+          style={{ color: '#38bdf8', fontWeight: 'bold', cursor: 'pointer', textDecoration: 'underline' }}
         >
-
-          {isLogin ? 'Register' : 'Login'}
-
-        </button>
-
-      </div>
-
+          {isLogin ? 'Create Account' : 'Login'}
+        </span>
+      </p>
     </div>
-
   );
-
 }

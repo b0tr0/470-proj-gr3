@@ -22,7 +22,7 @@ const Feed = () => {
     try {
       setLoading(true);
       const { data } = await API.get('/reports');
-      setReports(data);
+      setReports(data || []);
     } catch (error) {
       console.error('Failed to fetch reports:', error);
     } finally {
@@ -58,8 +58,23 @@ const Feed = () => {
     }
   };
 
+  // Filter out any expired or deleted reports
+  const activeReports = reports.filter((report) => {
+    if (report.isDeleted || report.isExpired) return false;
+    if (report.expiresAt) {
+      return new Date(report.expiresAt).getTime() > Date.now();
+    }
+    return true;
+  });
+
   return (
-    <div style={{ padding: '24px', maxWidth: '800px', margin: '0 auto', color: '#fff' }}>
+    <div style={{
+      padding: '24px',
+      maxWidth: '800px',
+      margin: '0 auto',
+      color: 'var(--text-primary)',
+      transition: 'color 0.3s ease'
+    }}>
       {/* Report Form Component */}
       <ReportForm
         formData={formData}
@@ -70,11 +85,11 @@ const Feed = () => {
       {/* Reports Feed List */}
       <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
         {loading ? (
-          <p style={{ color: '#94a3b8' }}>Loading reports...</p>
-        ) : reports.length === 0 ? (
-          <p style={{ color: '#94a3b8' }}>No reports published yet.</p>
+          <p style={{ color: 'var(--text-secondary)' }}>Loading reports...</p>
+        ) : activeReports.length === 0 ? (
+          <p style={{ color: 'var(--text-secondary)' }}>No active reports published yet.</p>
         ) : (
-          reports.map((report) => (
+          activeReports.map((report) => (
             <ReportCard
               key={report._id || report.id}
               report={report}

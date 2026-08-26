@@ -2,7 +2,8 @@ const mongoose = require('mongoose');
 
 const commentSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  text: String,
+  username: { type: String },
+  text: { type: String, required: true },
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -15,6 +16,8 @@ const forumPostSchema = new mongoose.Schema({
   postedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   author: { type: String, default: 'Member' },
   isAnonymous: { type: Boolean, default: false },
+  upvotes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  downvotes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   votes: { type: Number, default: 0 },
   comments: [commentSchema]
 }, { timestamps: true });
