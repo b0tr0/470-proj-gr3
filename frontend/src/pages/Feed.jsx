@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import API from '../api';
 import ReportCard from '../components/ReportCard';
 import ReportForm from '../components/ReportForm';
@@ -18,7 +18,7 @@ const Feed = () => {
   const currentUserId = userInfo._id || userInfo.id;
   const userRole = userInfo.role || 'user';
 
-  const fetchReports = async () => {
+  const fetchReports = useCallback(async () => {
     try {
       setLoading(true);
       const { data } = await API.get('/reports');
@@ -28,11 +28,35 @@ const Feed = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchReports();
-  }, []);
+
+    // Listen to real-time SOS broadcast event
+    const handleSOSCreated = (event) => {
+      const newReport = event.detail;
+      if (newReport && (newReport._id || newReport.id)) {
+        setReports((prevReports) => {
+          // Avoid duplicate entries if already present
+          const exists = prevReports.some(
+            (r) => (r._id || r.id) === (newReport._id || newReport.id)
+          );
+          if (exists) return prevReports;
+          return [newReport, ...prevReports];
+        });
+      } else {
+        // Fallback: Re-fetch list if payload is generic
+        fetchReports();
+      }
+    };
+
+    window.addEventListener('sosReportCreated', handleSOSCreated);
+
+    return () => {
+      window.removeEventListener('sosReportCreated', handleSOSCreated);
+    };
+  }, [fetchReports]);
 
   const handleSubmit = async (e, isAnonymous = false) => {
     e.preventDefault();

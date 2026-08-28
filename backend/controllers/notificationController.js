@@ -137,7 +137,25 @@ const sendVerificationNotification = async ({ recipientId, senderId, senderName,
   }
 };
 
-// 6. Get User Notifications (REST endpoint)
+// 6. Send SOS Emergency Alert Notification
+const sendSOSNotification = async ({ recipientId, senderId, senderName, note, reportId, lat, lng }) => {
+  if (!recipientId || (senderId && String(recipientId) === String(senderId))) return;
+  try {
+    await Notification.create({
+      recipient: recipientId,
+      sender: senderId || null,
+      type: 'sos_emergency',
+      title: '🚨 EMERGENCY SOS BROADCAST',
+      message: `${senderName || 'A driver'} triggered an SOS near (${Number(lat || 0).toFixed(4)}, ${Number(lng || 0).toFixed(4)}): "${note || 'Immediate roadside assistance needed!'}"`,
+      relatedId: reportId || null,
+      createdAt: new Date(),
+    });
+  } catch (error) {
+    console.error('Send SOS Notification Error:', error);
+  }
+};
+
+// 7. Get User Notifications (REST endpoint)
 const getNotifications = async (req, res) => {
   try {
     const notifications = await Notification.find({ recipient: req.user._id })
@@ -151,7 +169,7 @@ const getNotifications = async (req, res) => {
   }
 };
 
-// 7. Mark Notification as Read (REST endpoint)
+// 8. Mark Notification as Read (REST endpoint)
 const markAsRead = async (req, res) => {
   try {
     await Notification.findByIdAndUpdate(req.params.id, { isRead: true });
@@ -168,6 +186,7 @@ module.exports = {
   sendVoteNotification,
   sendCommentNotification,
   sendVerificationNotification,
+  sendSOSNotification,
   getNotifications,
   getUserNotifications: getNotifications,
   markAsRead,

@@ -108,22 +108,36 @@ export default function UserNetwork() {
   };
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '30px 20px', color: '#ffffff' }}>
-      <h2 style={{ fontSize: '1.6rem', fontWeight: '800', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+    <div style={{
+      maxWidth: '1200px',
+      margin: '0 auto',
+      padding: '30px 20px',
+      color: 'var(--text-primary)',
+      transition: 'color 0.3s ease'
+    }}>
+      <h2 style={{
+        fontSize: '1.6rem',
+        fontWeight: '800',
+        marginBottom: '24px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        color: 'var(--text-primary)'
+      }}>
         🌐 User Network
       </h2>
 
       {/* Pending Requests Banner */}
       {!isAuthority && friendRequests.length > 0 && (
         <div style={{
-          backgroundColor: '#064e3b',
-          border: '1px solid #10b981',
+          backgroundColor: 'var(--bg-card)',
+          border: '1.5px solid #10b981',
           borderRadius: '12px',
           padding: '16px 20px',
           marginBottom: '24px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+          boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
         }}>
-          <h3 style={{ margin: '0 0 12px 0', fontSize: '1rem', color: '#a7f3d0' }}>
+          <h3 style={{ margin: '0 0 12px 0', fontSize: '1rem', color: '#10b981', fontWeight: 'bold' }}>
             📬 Pending Friend Requests ({friendRequests.length})
           </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -132,11 +146,12 @@ export default function UserNetwork() {
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                backgroundColor: 'rgba(0,0,0,0.2)',
+                backgroundColor: 'var(--input-bg)',
+                border: '1px solid var(--border-color)',
                 padding: '10px 14px',
                 borderRadius: '8px'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
                   <span style={{ fontWeight: 'bold' }}>👤 {reqUser.username}</span>
                   <TrustBadge score={reqUser.trustScore ?? 100} role={reqUser.role} />
                 </div>
@@ -159,7 +174,7 @@ export default function UserNetwork() {
                   <button
                     onClick={() => handleReject(reqUser._id)}
                     style={{
-                      backgroundColor: '#ef4444',
+                      backgroundColor: 'var(--accent-red)',
                       color: '#ffffff',
                       border: 'none',
                       padding: '6px 14px',
@@ -183,18 +198,34 @@ export default function UserNetwork() {
         
         {/* Column 1: Friends List & Add Form */}
         <div style={{
-          backgroundColor: '#082f24',
-          border: '1px solid #134e40',
+          backgroundColor: 'var(--bg-card)',
+          border: '1px solid var(--border-color)',
           borderRadius: '14px',
           padding: '20px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+          boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
+          transition: 'background-color 0.3s ease, border-color 0.3s ease'
         }}>
-          <h3 style={{ margin: '0 0 16px 0', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h3 style={{
+            margin: '0 0 16px 0',
+            fontSize: '1.1rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            color: 'var(--text-primary)'
+          }}>
             👥 User Friend List
           </h3>
 
           {isAuthority ? (
-            <p style={{ fontSize: '13px', color: '#93c5fd', backgroundColor: '#1e3a8a', padding: '12px', borderRadius: '8px', margin: '0 0 16px 0' }}>
+            <p style={{
+              fontSize: '13px',
+              color: '#3b82f6',
+              backgroundColor: 'rgba(59, 130, 246, 0.1)',
+              border: '1px solid rgba(59, 130, 246, 0.3)',
+              padding: '12px',
+              borderRadius: '8px',
+              margin: '0 0 16px 0'
+            }}>
               ℹ️ Official authority accounts cannot send or receive personal friend requests.
             </p>
           ) : (
@@ -208,9 +239,9 @@ export default function UserNetwork() {
                   width: '100%',
                   padding: '12px 14px',
                   borderRadius: '8px',
-                  backgroundColor: '#041f17',
-                  border: '1.5px solid #10b981',
-                  color: '#ffffff',
+                  backgroundColor: 'var(--input-bg)',
+                  border: '1.5px solid var(--border-color)',
+                  color: 'var(--text-primary)',
                   fontSize: '0.95rem',
                   boxSizing: 'border-box',
                   outline: 'none'
@@ -221,7 +252,7 @@ export default function UserNetwork() {
                 type="submit"
                 style={{
                   width: '100%',
-                  backgroundColor: '#ef4444',
+                  backgroundColor: 'var(--accent-red)',
                   color: '#ffffff',
                   border: 'none',
                   padding: '12px',
@@ -229,7 +260,7 @@ export default function UserNetwork() {
                   fontWeight: 'bold',
                   fontSize: '0.95rem',
                   cursor: 'pointer',
-                  transition: 'background-color 0.2s'
+                  transition: 'opacity 0.2s'
                 }}
               >
                 Add Friend
@@ -240,7 +271,7 @@ export default function UserNetwork() {
           {/* Friends List */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {friends.length === 0 ? (
-              <p style={{ fontSize: '13px', color: '#94a3b8', textAlign: 'center', margin: '20px 0' }}>
+              <p style={{ fontSize: '13px', color: 'var(--text-secondary)', textAlign: 'center', margin: '20px 0' }}>
                 {isAuthority ? 'No friend connections available for authority accounts.' : 'No friends added yet. Send a request using a username above!'}
               </p>
             ) : (
@@ -249,19 +280,19 @@ export default function UserNetwork() {
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  backgroundColor: '#041f17',
+                  backgroundColor: 'var(--input-bg)',
                   padding: '10px 14px',
                   borderRadius: '8px',
-                  border: '1px solid #134e40'
+                  border: '1px solid var(--border-color)'
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
                     <span style={{ fontWeight: '600', fontSize: '0.95rem' }}>👤 {friend.username}</span>
                     <TrustBadge score={friend.trustScore ?? 100} role={friend.role} />
                   </div>
                   <button
                     onClick={() => setActiveChatFriend(friend)}
                     style={{
-                      backgroundColor: '#0f766e',
+                      backgroundColor: '#0284c7',
                       color: '#ffffff',
                       border: 'none',
                       padding: '6px 12px',
@@ -284,24 +315,32 @@ export default function UserNetwork() {
 
         {/* Column 2: Live Location */}
         <div style={{
-          backgroundColor: '#082f24',
-          border: '1px solid #134e40',
+          backgroundColor: 'var(--bg-card)',
+          border: '1px solid var(--border-color)',
           borderRadius: '14px',
           padding: '20px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: 'space-between'
+          justifyContent: 'space-between',
+          transition: 'background-color 0.3s ease, border-color 0.3s ease'
         }}>
           <div>
-            <h3 style={{ margin: '0 0 12px 0', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h3 style={{
+              margin: '0 0 12px 0',
+              fontSize: '1.1rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              color: 'var(--text-primary)'
+            }}>
               📍 Live Location
             </h3>
-            <p style={{ fontSize: '13px', color: '#94a3b8', lineHeight: '1.5' }}>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
               Share your current GPS coordinates to receive proximity hazard alerts and emergency broadcasts.
             </p>
             {lastUpdatedLoc && (
-              <p style={{ fontSize: '12px', color: '#10b981', marginTop: '12px' }}>
+              <p style={{ fontSize: '12px', color: '#10b981', marginTop: '12px', fontWeight: 'bold' }}>
                 ✓ Last shared at {lastUpdatedLoc}
               </p>
             )}
@@ -328,30 +367,39 @@ export default function UserNetwork() {
 
         {/* Column 3: Priority Notifications Info */}
         <div style={{
-          backgroundColor: '#082f24',
-          border: '1px solid #134e40',
+          backgroundColor: 'var(--bg-card)',
+          border: '1px solid var(--border-color)',
           borderRadius: '14px',
           padding: '20px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+          boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
+          transition: 'background-color 0.3s ease, border-color 0.3s ease'
         }}>
-          <h3 style={{ margin: '0 0 12px 0', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h3 style={{
+            margin: '0 0 12px 0',
+            fontSize: '1.1rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            color: 'var(--text-primary)'
+          }}>
             🔔 Priority Notifications
           </h3>
-          <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '14px' }}>
+          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '14px', lineHeight: '1.4' }}>
             Alerts triggered by proximity, SOS beacons, and direct messages.
           </p>
 
           <div style={{
-            backgroundColor: '#ffffff',
-            color: '#0f172a',
+            backgroundColor: 'var(--input-bg)',
+            color: 'var(--text-primary)',
             padding: '14px',
             borderRadius: '8px',
-            borderLeft: '4px solid #ef4444'
+            border: '1px solid var(--border-color)',
+            borderLeft: '4px solid var(--accent-red)'
           }}>
-            <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#ef4444', textTransform: 'uppercase' }}>
+            <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--accent-red)', textTransform: 'uppercase' }}>
               Network Alerts Active
             </span>
-            <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#334155', lineHeight: '1.4' }}>
+            <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
               Live alerts broadcast directly to your notification dropdown.
             </p>
           </div>

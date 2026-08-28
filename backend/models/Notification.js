@@ -23,6 +23,7 @@ const notificationSchema = new mongoose.Schema(
         'friend_request',
         'friend_accepted',
         'sos_alert',
+        'sos_emergency',
         'general',
       ],
       required: true,

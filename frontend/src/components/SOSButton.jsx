@@ -43,8 +43,16 @@ export default function SOSButton() {
         emergencyNote: note || 'Immediate road assistance requested.'
       });
 
+      // 1. Dispatch custom event with the created report data to update Feed in real-time
+      const newSOSReport = data.report || data;
+      window.dispatchEvent(
+        new CustomEvent('sosReportCreated', { detail: newSOSReport })
+      );
+
+      // 2. Dispatch trust score update event
       window.dispatchEvent(new Event('trustScoreUpdated'));
-      alert(`🚨 SOS ALERT DISPATCHED!\n\n${data.totalNotified} contacts/authorities have been notified with your coordinates.`);
+
+      alert(`🚨 SOS ALERT DISPATCHED!\n\n${data.totalNotified ?? 1} contacts/authorities have been notified with your coordinates.`);
       setShowConfirm(false);
       setNote('');
       setStatusMsg('');
@@ -130,7 +138,7 @@ export default function SOSButton() {
                 borderRadius: '8px',
                 backgroundColor: 'var(--input-bg)',
                 border: '1px solid var(--border-color)',
-                color: 'var(--input-text)',
+                color: 'var(--input-text, var(--text-primary))',
                 fontSize: '13px',
                 boxSizing: 'border-box',
                 marginBottom: '14px'
