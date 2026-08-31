@@ -1,10 +1,40 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+import markerIconPng from 'leaflet/dist/images/marker-icon.png';
+const customIcon = new L.Icon({
+  iconUrl: markerIconPng,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41]
+});
+
+function LocationPicker({ position, setPosition }) {
+  useMapEvents({
+    click(e) {
+      setPosition(e.latlng);
+    },
+  });
+  return position ? <Marker position={position} icon={customIcon} /> : null;
+}
 
 export default function ReportForm({ formData, setFormData, handleSubmit, loading }) {
+  const [mapPos, setMapPos] = useState({ lat: 23.8103, lng: 90.4125 });
+
   const handleChange = (e) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
+    });
+  };
+
+  const handlePositionChange = (latlng) => {
+    setMapPos(latlng);
+    setFormData({
+      ...formData,
+      lat: latlng.lat,
+      lng: latlng.lng
     });
   };
 
@@ -57,6 +87,17 @@ export default function ReportForm({ formData, setFormData, handleSubmit, loadin
           style={{ padding: '10px', borderRadius: '6px', border: '1px solid #1e4d3b', backgroundColor: '#062319', color: '#fff' }}
         />
 
+        {/* Interactive Map Picker */}
+        <div>
+          <label style={{ color: '#a7f3d0', fontSize: '13px' }}>📌 Click on map to select incident location:</label>
+          <div style={{ height: '180px', width: '100%', borderRadius: '8px', overflow: 'hidden', marginTop: '6px' }}>
+            <MapContainer center={[mapPos.lat, mapPos.lng]} zoom={12} style={{ height: '100%', width: '100%' }}>
+              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+              <LocationPicker position={mapPos} setPosition={handlePositionChange} />
+            </MapContainer>
+          </div>
+        </div>
+
         <input
           type="text"
           name="imageUrl"
@@ -66,7 +107,7 @@ export default function ReportForm({ formData, setFormData, handleSubmit, loadin
           style={{ padding: '10px', borderRadius: '6px', border: '1px solid #1e4d3b', backgroundColor: '#062319', color: '#fff' }}
         />
 
-        {/* 2 buttons */}
+        {/* Submit Buttons */}
         <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
           <button
             type="button"
@@ -101,7 +142,7 @@ export default function ReportForm({ formData, setFormData, handleSubmit, loadin
               cursor: loading ? 'not-allowed' : 'pointer'
             }}
           >
-            {loading ? 'Submitting...' : ' Publish Anonymously'}
+            {loading ? 'Submitting...' : '🕵️ Publish Anonymously'}
           </button>
         </div>
 
